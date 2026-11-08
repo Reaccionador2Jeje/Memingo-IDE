@@ -329,11 +329,15 @@ async function runGitFileAction(action, relativePath = "") {
   const stat = await fs.lstat(target).catch(() => null);
   if (!stat || !stat.isFile() || stat.isSymbolicLink()) throw new Error("El archivo ya no existe o no es válido.");
   let args;
-  if (action === "fileDiff") args = ["diff", "--no-ext-diff", "--no-color", "HEAD", "--", relative];
-  else if (action === "stageFile") args = ["add", "--", relative];
+  if (action === "fileDiff") {
+    const staged = await runGitProcess(root, "git", ["diff", "--cached", "--no-ext-diff", "--no-color", "--", relative]);
+    const unstaged = await runGitProcess(root, "git", ["diff", "--no-ext-diff", "--no-color", "--", relative]);
+    return { code: staged.code || unstaged.code, stdout: [staged.stdout, unstaged.stdout].filter(Boolean).join("\\n"), stderr: [staged.stderr, unstaged.stderr].filter(Boolean).join("\\n") };
+  }
+  if (action === "stageFile") args = ["add", "--", relative];
   else if (action === "unstageFile") {
-    const tracked = await runGitProcess(root, "git", ["ls-files", "--error-unmatch", "--", relative]);
-    args = tracked.code === 0 ? ["reset", "-q", "HEAD", "--", relative] : ["rm", "--cached", "--", relative];
+    const head = await runGitProcess(root, "git", ["rev-parse", "--verify", "HEAD"]);
+    args = head.code === 0 ? ["reset", "-q", "HEAD", "--", relative] : ["rm", "--cached", "--", relative];
   } else throw new Error("Acción de archivo Git no permitida.");
   return runGitProcess(root, "git", args);
 }
