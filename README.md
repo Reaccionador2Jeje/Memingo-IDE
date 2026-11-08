@@ -78,3 +78,8 @@ BSL License.
 Al abrir una carpeta, Memingo IDE busca `memingo.toml` en la raíz y muestra el nombre, versión, archivo principal y cantidad de dependencias declaradas. Si el archivo principal existe, puedes abrirlo desde la tarjeta del proyecto. Si no hay manifest, la carpeta sigue disponible como espacio de trabajo normal.
 
 La lectura del manifest está limitada a 64 KB y la ruta del archivo principal se comprueba para que permanezca dentro de la carpeta del proyecto.
+
+
+## Terminal integrada
+
+La terminal acepta únicamente comandos incorporados y acciones del runtime Memingo: help, clear, pwd, ls, memingo run, memingo check y memingo fmt. Los tres comandos del runtime trabajan sobre el archivo activo. No se ejecutan comandos arbitrarios del sistema ni se usa un shell, para reducir riesgos de ejecución accidental.
