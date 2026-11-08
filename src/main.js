@@ -417,6 +417,86 @@ async function runVersionControl(action, message = "") {
   });
 }
 
+async function getGitBranches(root) {
+  const result = await runGitProcess(root, "git", ["for-each-ref", "--format=%(refname:short)%09%(HEAD)", "refs/heads"]);
+  if (result.code !== 0) return result;
+  return { ...result, branches: result.stdout.split(/\r?\n/).filter(Boolean).map(line => {
+    const parts = line.split("\t");
+    return { name: parts[0], current: parts[1] === "*" };
+  }) };
+}
+function validateBranchName(name) {
+  if (typeof name !== "string" || !name.trim() || name.length > 100) throw new Error("Escribe un nombre de rama válido (máximo 100 caracteres).");
+  return name.trim();
+}
+ipcMain.handle("vcs:branches", async () => {
+  if (!projectRoot) throw new Error("Abre un proyecto antes de gestionar ramas.");
+  const root = path.resolve(projectRoot);
+  const status = await runGitProcess(root, "git", ["rev-parse", "--is-inside-work-tree"]);
+  if (status.code !== 0) return status;
+  const [branches, current] = await Promise.all([
+    getGitBranches(root),
+    runGitProcess(root, "git", ["branch", "--show-current"])
+  ]);
+  return { code: branches.code, branches: branches.branches || [], current: current.stdout.trim(), error: branches.error, stderr: branches.stderr };
+});
+ipcMain.handle("vcs:branch-action", async (_event, payload = {}) => {
+  if (!projectRoot) throw new Error("Abre un proyecto antes de gestionar ramas.");
+  const root = path.resolve(projectRoot);
+  const action = typeof payload.action === "string" ? payload.action : "";
+  const name = typeof payload.name === "string" ? payload.name.trim() : "";
+  if (["create","switch","merge"].includes(action)) {
+    if (!name || name.length > 100) throw new Error("Nombre de rama no válido.");
+    const checked = await runGitProcess(root, "git", ["check-ref-format", "--branch", name]);
+    if (checked.code !== 0) throw new Error("El nombre de rama no es válido.");
+  }
+  if (action === "create") return runGitProcess(root, "git", ["switch", "-c", name]);
+  if (action === "switch" || action === "merge") {
+    const clean = await runGitProcess(root, "git", ["status", "--porcelain"]);
+    if (clean.code !== 0) return clean;
+    if (clean.stdout.trim()) return { code: 2, stderr: "Guarda o prepara tus cambios antes de cambiar de rama o fusionar." };
+    if (action === "switch") return runGitProcess(root, "git", ["switch", name]);
+    return runGitProcess(root, "git", ["merge", "--no-edit", "--no-ff", name]);
+  }
+  if (action === "abortMerge") return runGitProcess(root, "git", ["merge", "--abort"]);
+  if (action === "conflicts") {
+    const result = await runGitProcess(root, "git", ["diff", "--name-only", "--diff-filter=U"]);
+    return { ...result, files: result.stdout.split(/\r?\n/).filter(Boolean).slice(0,100) };
+  }
+  throw new Error("Acción de ramas no permitida.");
+});
+ipcMain.handle("vcs:conflict-read", async (_event, payload = {}) => {
+  if (!projectRoot || typeof payload.path !== "string") throw new Error("Archivo de conflicto no válido.");
+  const root = path.resolve(projectRoot), target = path.resolve(root, payload.path), relative = path.relative(root, target);
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) throw new Error("La ruta sale del proyecto.");
+  const status = await runGitProcess(root, "git", ["diff", "--name-only", "--diff-filter=U"]);
+  if (status.code !== 0 || !status.stdout.split(/\r?\n/).includes(relative)) throw new Error("El archivo no está en conflicto.");
+  const stat = await fs.lstat(target).catch(() => null);
+  if (!stat || !stat.isFile() || stat.isSymbolicLink() || stat.size > 1024*1024) throw new Error("El archivo no existe, no es regular o supera 1 MB.");
+  return { path: relative, content: await fs.readFile(target, "utf8") };
+});
+ipcMain.handle("vcs:conflict-save", async (_event, payload = {}) => {
+  if (!projectRoot || typeof payload.path !== "string" || typeof payload.content !== "string") throw new Error("Datos de resolución no válidos.");
+  if (payload.content.length > 1024*1024) throw new Error("El archivo supera 1 MB.");
+  const root = path.resolve(projectRoot), target = path.resolve(root, payload.path), relative = path.relative(root, target);
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) throw new Error("La ruta sale del proyecto.");
+  const status = await runGitProcess(root, "git", ["diff", "--name-only", "--diff-filter=U"]);
+  if (status.code !== 0 || !status.stdout.split(/\r?\n/).includes(relative)) throw new Error("El archivo ya no está en conflicto.");
+  const stat = await fs.lstat(target).catch(() => null);
+  if (!stat || !stat.isFile() || stat.isSymbolicLink()) throw new Error("El archivo no es válido.");
+  await fs.writeFile(target, payload.content, "utf8");
+  return { saved: true, path: relative };
+});
+ipcMain.handle("vcs:conflict-stage", async (_event, payload = {}) => {
+  if (!projectRoot || typeof payload.path !== "string") throw new Error("Archivo no válido.");
+  const root = path.resolve(projectRoot), target = path.resolve(root, payload.path), relative = path.relative(root, target);
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) throw new Error("La ruta sale del proyecto.");
+  const stat = await fs.lstat(target).catch(() => null);
+  if (!stat || !stat.isFile() || stat.isSymbolicLink()) throw new Error("El archivo no es válido.");
+  return runGitProcess(root, "git", ["add", "--", relative]);
+});
+
+
 ipcMain.handle("vcs:commit-detail", async (_event, payload = {}) => {
   if (!projectRoot) throw new Error("Abre un proyecto antes de consultar el historial.");
   const hash = typeof payload.hash === "string" ? payload.hash : "";
