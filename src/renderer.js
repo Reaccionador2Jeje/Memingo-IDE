@@ -265,6 +265,7 @@ async function openProject() {
     }
     log("Proyecto abierto: " + project.path,"hint-line");
     await refreshGitChanges();
+    await refreshGitBranches();
   } catch (error) { log(error.message,"stderr"); }
 }
 async function saveFile() {
@@ -731,6 +732,106 @@ async function showCommitFileDiff(hash, filePath) {
   } catch (error) { view.textContent = error.message; }
 }
 
+async function refreshGitBranches() {
+  if (!projectPath) return;
+  const list = document.getElementById("gitBranches");
+  list.textContent = "Cargando ramas…";
+  try {
+    const result = await window.memingoIDE.versionControlBranches();
+    if (result.code !== 0) { list.textContent = result.error || result.stderr || "No se pudieron cargar las ramas. ¿Es un repositorio Git?"; return; }
+    document.getElementById("gitCurrentBranch").textContent = "Rama actual: " + (result.current || "(HEAD separado)");
+    list.replaceChildren();
+    const select = document.getElementById("gitMergeBranch");
+    select.replaceChildren();
+    const placeholder = document.createElement("option");
+    placeholder.value = ""; placeholder.textContent = "Selecciona rama";
+    select.appendChild(placeholder);
+    for (const branch of result.branches || []) {
+      const row = document.createElement("div"); row.className = "git-branch-row";
+      const name = document.createElement("span"); name.textContent = (branch.current ? "● " : "○ ") + branch.name;
+      const change = document.createElement("button"); change.type = "button"; change.className = "git-file-action";
+      change.textContent = branch.current ? "Actual" : "Cambiar"; change.disabled = branch.current;
+      change.addEventListener("click", () => runGitBranchAction("switch", branch.name));
+      row.append(name, change); list.appendChild(row);
+      if (!branch.current) { const option = document.createElement("option"); option.value = branch.name; option.textContent = branch.name; select.appendChild(option); }
+    }
+    if (!result.branches?.length) {
+      const empty = document.createElement("div"); empty.className = "git-empty"; empty.textContent = "Todavía no hay ramas (crea el primer commit)."; list.appendChild(empty);
+    }
+    await refreshGitConflicts();
+  } catch (error) { list.textContent = error.message; }
+}
+async function runGitBranchAction(action, name = "") {
+  if (!projectPath) return;
+  const labels = {create:"Crear rama",switch:"Cambiar rama",merge:"Fusionar rama",abortMerge:"Cancelar fusión"};
+  if (action === "merge" && !confirm("¿Fusionar la rama " + name + " en la rama actual?")) return;
+  if (action === "abortMerge" && !confirm("¿Cancelar la fusión actual? Se descartará el estado de la operación de merge.")) return;
+  runStatus.textContent = "● Git trabajando";
+  try {
+    const result = await window.memingoIDE.versionControlBranchAction({action,name});
+    if (result.stdout) log(result.stdout, "stdout");
+    if (result.stderr || result.error) log(result.error || result.stderr, result.code === 0 ? "hint-line" : "stderr");
+    if (result.code === 0) log((labels[action] || action) + " completado.", "hint-line");
+    else log((labels[action] || action) + " terminó con código " + result.code + ".", "stderr");
+    await refreshGitBranches();
+    await refreshGitChanges();
+    await refreshGitHistory();
+  } catch (error) { log(error.message, "stderr"); }
+  finally { runStatus.textContent = "● Inactivo"; }
+}
+async function refreshGitConflicts() {
+  if (!projectPath) return;
+  const list = document.getElementById("gitConflicts");
+  try {
+    const result = await window.memingoIDE.versionControlBranchAction({action:"conflicts"});
+    const files = result.files || [];
+    list.replaceChildren();
+    if (!files.length) {
+      const empty = document.createElement("div"); empty.className = "git-empty"; empty.textContent = "✓ No hay conflictos pendientes."; list.appendChild(empty);
+      document.getElementById("gitConflictEditor").hidden = true;
+      return;
+    }
+    for (const filePath of files) {
+      const button = document.createElement("button"); button.type = "button"; button.className = "git-history-file"; button.textContent = "⚠ " + filePath;
+      button.addEventListener("click", () => openGitConflict(filePath));
+      list.appendChild(button);
+    }
+    const abort = document.createElement("button"); abort.type = "button"; abort.className = "outline git-abort-merge"; abort.textContent = "Cancelar fusión";
+    abort.addEventListener("click", () => runGitBranchAction("abortMerge"));
+    list.appendChild(abort);
+  } catch (error) { list.textContent = error.message; }
+}
+async function openGitConflict(filePath) {
+  try {
+    const result = await window.memingoIDE.readConflictFile({path:filePath});
+    document.getElementById("gitConflictPath").textContent = result.path;
+    document.getElementById("gitConflictContent").value = result.content;
+    document.getElementById("gitConflictEditor").hidden = false;
+    document.getElementById("saveGitConflict").dataset.path = result.path;
+    document.getElementById("stageGitConflict").dataset.path = result.path;
+  } catch (error) { log(error.message, "stderr"); }
+}
+async function saveGitConflict() {
+  const button = document.getElementById("saveGitConflict"), filePath = button.dataset.path;
+  if (!filePath) return;
+  try {
+    const result = await window.memingoIDE.saveConflictFile({path:filePath,content:document.getElementById("gitConflictContent").value});
+    log(result.saved ? "Resolución guardada: " + filePath : "No se pudo guardar.", result.saved ? "hint-line" : "stderr");
+  } catch (error) { log(error.message, "stderr"); }
+}
+async function stageGitConflict() {
+  const button = document.getElementById("stageGitConflict"), filePath = button.dataset.path;
+  if (!filePath) return;
+  try {
+    const saved = await window.memingoIDE.saveConflictFile({path:filePath,content:document.getElementById("gitConflictContent").value});
+    if (!saved.saved) throw new Error("Guarda la resolución antes de marcarla.");
+    const result = await window.memingoIDE.stageConflictFile({path:filePath});
+    if (result.code !== 0) throw new Error(result.error || result.stderr || "No se pudo marcar el archivo como resuelto.");
+    log("Conflicto marcado como resuelto: " + filePath, "hint-line");
+    await refreshGitConflicts(); await refreshGitChanges();
+  } catch (error) { log(error.message, "stderr"); }
+}
+
 async function runGitAction(action) {
   if (!projectPath) { log("Abre un proyecto antes de usar Git.", "stderr"); return; }
   let message = "";
@@ -751,6 +852,7 @@ async function runGitAction(action) {
       if (action === "commit") document.getElementById("gitCommitMessage").value = "";
       if (["init","stage","commit","pull","push"].includes(action)) await refreshGitChanges();
       if (["init","commit","pull","push"].includes(action)) await refreshGitHistory();
+      if (["init","commit","pull","push"].includes(action)) await refreshGitBranches();
       if (action === "log") await refreshGitHistory();
       if (action === "status" && result.stdout) {
         const match = result.stdout.match(/## ([^\\s]+)/);
@@ -762,6 +864,12 @@ async function runGitAction(action) {
 }
 document.getElementById("refreshGitChanges").addEventListener("click", refreshGitChanges);
 document.getElementById("refreshGitHistory").addEventListener("click", refreshGitHistory);
+document.getElementById("refreshGitBranches").addEventListener("click", refreshGitBranches);
+document.getElementById("refreshGitConflicts").addEventListener("click", refreshGitConflicts);
+document.getElementById("createGitBranch").addEventListener("click", () => { const input=document.getElementById("gitNewBranchName"); const name=input.value.trim(); if(name) runGitBranchAction("create",name).then(()=>{input.value="";}); });
+document.getElementById("mergeGitBranch").addEventListener("click", () => { const name=document.getElementById("gitMergeBranch").value; if(name) runGitBranchAction("merge",name); else log("Selecciona una rama para fusionar.","stderr"); });
+document.getElementById("saveGitConflict").addEventListener("click", saveGitConflict);
+document.getElementById("stageGitConflict").addEventListener("click", stageGitConflict);
 document.querySelectorAll("[data-git]").forEach(button => {
   button.addEventListener("click", () => runGitAction(button.dataset.git));
 });
