@@ -584,7 +584,7 @@ async function runGitAction(action) {
     message = document.getElementById("gitCommitMessage").value.trim();
     if (!message) { log("Escribe un mensaje para el commit.", "stderr"); return; }
   }
-  const labels = {status:"git status",diff:"git diff",log:"git log",branch:"git branch",stage:"git add -A",commit:"git commit",pull:"git pull --ff-only",push:"git push",githubAuth:"gh auth status",githubRepo:"gh repo view"};
+  const labels = {status:"git status",diff:"git diff",log:"git log",branch:"git branch",init:"git init",stage:"git add -A",commit:"git commit",pull:"git pull --ff-only",push:"git push",githubAuth:"gh auth status",githubRepo:"gh repo view",githubPublish:"gh repo create (privado)"};
   log("$ " + (labels[action] || action), "hint-line");
   runStatus.textContent = "● Git trabajando";
   try {
