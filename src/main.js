@@ -129,7 +129,7 @@ async function streamAgentEvents(port, signal) {
         if (!dataLine) continue;
         try {
           const event = JSON.parse(dataLine.slice(5).trim());
-          const payload = event.payload || event;
+          const payload = event.payload || (event.data ? { type: event.type, properties: event.data } : event);
           sendAgentEvent(payload);
         } catch {}
       }
