@@ -301,6 +301,7 @@ async function streamAgentEvents(port, signal) {
 }
 ipcMain.handle("agents:connect", async (_event, payload = {}) => {
   const engine = payload.engine === "goose" ? "goose" : "opencode";
+  activeAgentEngine = engine;
   if (engine === "goose") return connectGoose();
   if (!projectRoot) throw new Error("Abre una carpeta de proyecto antes de conectar un agente.");
   if (agentProcess && agentPort) return { connected: true, port: agentPort };
@@ -403,8 +404,8 @@ ipcMain.handle("agents:permission", async (_event, payload = {}) => {
   if (payload.engine === "goose") {
     const id = Number(payload.id);
     const optionId = typeof payload.optionId === "string" ? payload.optionId : "";
-    if (!Number.isSafeInteger(id) || !goosePermissionRequests.has(id) || !/^[A-Za-z0-9_.:-]{1,160}$/.test(optionId)) throw new Error("Solicitud de permiso Goose no válida.");
-    gooseSend({ jsonrpc: "2.0", id, result: { outcome: { outcome: "selected", optionId } } });
+    if (!Number.isSafeInteger(id) || !goosePermissionRequests.has(id) || (!payload.cancelled && !/^[A-Za-z0-9_.:-]{1,160}$/.test(optionId))) throw new Error("Solicitud de permiso Goose no válida.");
+    gooseSend({ jsonrpc: "2.0", id, result: { outcome: payload.cancelled ? { outcome: "cancelled" } : { outcome: "selected", optionId } } });
     goosePermissionRequests.delete(id);
     return { answered: true };
   }
@@ -426,9 +427,11 @@ ipcMain.handle("agents:stop", async () => {
 });
 ipcMain.handle("agents:disconnect", async () => {
   await disconnectGoose();
+  activeAgentEngine = "opencode";
   if (agentEventAbort) { agentEventAbort.abort(); agentEventAbort = null; }
   if (agentProcess) { const child = agentProcess; agentProcess = null; child.kill(); }
   agentPort = null; agentSessionId = null; agentAuthorization = null;
+  activeAgentEngine = "opencode";
   sendAgentEvent({ type: "agent.disconnected", message: "Agente desconectado." });
   return { disconnected: true };
 });
@@ -588,6 +591,7 @@ ipcMain.handle("project:open", async () => {
   await disconnectGoose();
   if (agentProcess) { const previousAgent = agentProcess; agentProcess = null; previousAgent.kill(); sendAgentEvent({ type: "agent.disconnected", message: "Se cambió de proyecto. Vuelve a conectar el agente." }); }
   agentPort = null; agentSessionId = null; agentAuthorization = null;
+  activeAgentEngine = "opencode";
   projectRoot = path.resolve(result.filePaths[0]);
   return { path: projectRoot, name: path.basename(projectRoot), manifest: await readProjectManifest(projectRoot), tree: await scanProjectTree(projectRoot) };
 });
