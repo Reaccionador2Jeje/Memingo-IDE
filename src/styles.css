@@ -68,3 +68,13 @@ textarea::selection{background:rgba(126,150,210,.35);-webkit-text-fill-color:tra
 .gutter-line:hover{color:#dfe3ec;background:#1b1d26}
 .gutter-line.has-breakpoint{color:#ff8b8b}
 .gutter-line.has-breakpoint::before{content:"";position:absolute;left:5px;top:7px;width:9px;height:9px;border-radius:50%;background:#ff6b75}
+
+
+/* Git y GitHub */
+.git-panel{padding:0 10px 12px;border-bottom:1px solid #292a34}
+.git-panel-title{padding:8px 4px;color:#9699a8;font-size:9px;font-weight:800;letter-spacing:1px}
+.git-repo{padding:5px 4px 8px;color:#a6e36b;font-size:10px;overflow-wrap:anywhere}
+.git-actions{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.git-actions .outline{padding:6px 4px;font-size:9px;white-space:nowrap}
+.git-commit-message{width:100%;margin-top:7px;padding:7px 8px;border:1px solid #383b48;border-radius:5px;outline:0;background:#20222b;color:#e4e6ee;font:10px "Segoe UI",sans-serif}
+.git-commit-message:focus{border-color:#a6e36b}
