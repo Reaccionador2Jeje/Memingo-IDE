@@ -586,7 +586,7 @@ async function readProjectManifest(root) {
 }
 
 
-const SUPPORTED_EXTENSION_PATTERN = new RegExp("\\.(" + getSupportedExtensions().map(extension => extension.replace(/[.*+?^${}()|[\]\\]/g, "\\const PROJECT_TEXT_FILE = /\.(mgo|mgoa|js|mjs|cjs|ts|tsx|jsx|json|html|css|scss|md|mdx|py|rs|go|java|c|h|cpp|hpp|cs|toml|yaml|yml|sh|sql|xml|svg|txt|ini|cfg|conf)$/i;")).join("|") + ")$", "i");
+const SUPPORTED_EXTENSION_PATTERN = new RegExp("\\.(" + getSupportedExtensions().map(extension => extension.replace(/[^a-z0-9_-]/gi, "")).join("|") + ")$", "i");
 const SPECIAL_TEXT_FILENAMES = new Set(["dockerfile", "makefile", "gnumakefile", "license", "readme", ".gitignore", ".gitattributes"]);
 function isSupportedTextFile(filePath) {
   const name = path.basename(filePath).toLowerCase();
