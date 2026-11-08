@@ -60,3 +60,11 @@ textarea::selection{background:rgba(126,150,210,.35);-webkit-text-fill-color:tra
 .terminal-input-row input:disabled{opacity:.55}
 .terminal-send{padding:5px 10px;border:1px solid #424654;border-radius:5px;background:#252833;color:#cdd1dd;font-size:10px}
 .terminal-send:hover{border-color:#a6e36b;color:#a6e36b}
+
+
+/* Breakpoints del depurador */
+.gutter{display:flex;flex-direction:column;align-items:stretch;overflow:hidden;padding:0 7px 20px 0}
+.gutter-line{height:23.4px;min-height:23.4px;padding:0 8px 0 0;text-align:right;background:transparent;color:#555968;font:13px/23.4px "JetBrains Mono",Consolas,monospace;position:relative}
+.gutter-line:hover{color:#dfe3ec;background:#1b1d26}
+.gutter-line.has-breakpoint{color:#ff8b8b}
+.gutter-line.has-breakpoint::before{content:"";position:absolute;left:5px;top:7px;width:9px;height:9px;border-radius:50%;background:#ff6b75}
