@@ -189,7 +189,10 @@ ipcMain.handle("agents:connect", async () => {
   for (let attempt = 0; attempt < 40; attempt++) {
     if (agentProcess !== child || child.exitCode !== null) break;
     try {
-      const response = await fetch("http://127.0.0.1:" + port + "/global/health", { signal: AbortSignal.timeout(1000) });
+      let response = await fetch("http://127.0.0.1:" + port + "/api/info", { signal: AbortSignal.timeout(1000) });
+      if (response.status === 404 || response.status === 405) {
+        response = await fetch("http://127.0.0.1:" + port + "/global/health", { signal: AbortSignal.timeout(1000) });
+      }
       if (response.ok) { healthy = true; break; }
     } catch {}
     await delay(250);
@@ -239,7 +242,7 @@ ipcMain.handle("agents:permission", async (_event, payload = {}) => {
 ipcMain.handle("agents:stop", async () => {
   if (!agentSessionId || !agentPort) return { stopped: false };
   const sessionPath = "/session/" + encodeURIComponent(agentSessionId);
-  await agentApiCompat("POST", "/api" + sessionPath + "/abort", sessionPath + "/abort").catch(() => null);
+  await agentApiCompat("POST", "/api" + sessionPath + "/interrupt", sessionPath + "/abort").catch(() => null);
   return { stopped: true };
 });
 ipcMain.handle("agents:disconnect", async () => {
