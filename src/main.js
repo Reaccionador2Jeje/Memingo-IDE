@@ -273,3 +273,47 @@ ipcMain.handle("terminal:execute", async (_event, payload = {}) => {
   if (activeProcess) return { code: 1, stderr: "Ya hay un proceso en ejecución." };
   return await runMemingoTool(_event, match[1], absolute);
 });
+
+
+async function runMemingoDebug(event, filePath, breakpoints = []) {
+  if (typeof filePath !== "string" || !filePath.trim()) throw new Error("Guarda un archivo .mgo antes de depurar.");
+  if (activeProcess) throw new Error("Ya hay un proceso Memingo en ejecución.");
+  const absolutePath = path.resolve(filePath);
+  const relative = projectRoot ? path.relative(projectRoot, absolutePath) : "";
+  if (projectRoot && (relative.startsWith("..") || path.isAbsolute(relative))) throw new Error("El archivo está fuera del proyecto.");
+  const stat = await fs.stat(absolutePath).catch(() => null);
+  if (!stat || !stat.isFile() || !/\.mgo$/i.test(absolutePath)) throw new Error("Selecciona un archivo .mgo válido.");
+  const lines = Array.isArray(breakpoints) ? [...new Set(breakpoints.filter(value => Number.isInteger(value) && value > 0))].slice(0, 200) : [];
+  const args = ["debug", absolutePath];
+  if (lines.length) args.push("--breakpoints", lines.join(","));
+  return await new Promise(resolve => {
+    const child = spawn(process.platform === "win32" ? "memingo.exe" : "memingo", args, {
+      cwd: path.dirname(absolutePath), windowsHide: true, env: process.env
+    });
+    activeProcess = child;
+    let stdout = "", stderr = "", settled = false;
+    const finish = result => {
+      if (settled) return;
+      settled = true;
+      if (activeProcess === child) activeProcess = null;
+      resolve(result);
+    };
+    child.stdout.on("data", data => { stdout += data.toString(); });
+    child.stderr.on("data", data => { stderr += data.toString(); });
+    child.on("error", error => finish({
+      code: -1,
+      error: error.code === "ENOENT" ? "El runtime no reconoce el comando debug. Actualiza Memingo a la versión que incluye el depurador." : error.message
+    }));
+    child.on("close", code => {
+      const marker = "MEMINGO_DEBUG:";
+      const start = stdout.lastIndexOf(marker);
+      let trace = null;
+      if (start >= 0) {
+        try { trace = JSON.parse(stdout.slice(start + marker.length).trim()); }
+        catch (error) { stderr += "\\nNo se pudo interpretar la traza: " + error.message; }
+      }
+      finish({ code: code ?? -1, stdout, stderr, trace });
+    });
+  });
+}
+ipcMain.handle("memingo:debug", (event, payload) => runMemingoDebug(event, payload?.filePath, payload?.breakpoints));
