@@ -99,3 +99,10 @@ El panel **Control de versiones** trabaja sobre la carpeta de proyecto abierta e
 - Comprobar la sesión de GitHub CLI (gh auth status), consultar el repositorio remoto (gh repo view) y publicar el proyecto como repositorio **privado** en GitHub (gh repo create).
 
 Requiere **Git** instalado y disponible en PATH. Las funciones de GitHub requieren además **GitHub CLI (gh)** instalado y autenticado previamente con gh auth login. La IDE no solicita ni almacena contraseñas o tokens. Pull y Push solo se ejecutan cuando pulsas sus botones. No se permite introducir comandos de terminal arbitrarios.
+
+
+### Panel Source Control
+
+El panel de control de versiones también muestra los archivos modificados y sin seguimiento mediante `git status --porcelain`. Puedes actualizar la lista, abrir las diferencias de un archivo y preparar o quitar del staging cada archivo individualmente. El visor combina las diferencias preparadas y las que siguen en el directorio de trabajo. Las rutas se validan para impedir que las operaciones por archivo salgan de la carpeta del proyecto.
+
+Esta vista se actualiza al abrir un proyecto y después de inicializar, preparar, confirmar o sincronizar cambios.
