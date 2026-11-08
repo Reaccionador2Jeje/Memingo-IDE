@@ -18,7 +18,7 @@ function escapeHTML(value) {
 }
 function updateSyntax() {
   const source = editor.value;
-  const pattern = /("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*'|#[^\\n]*|\\b(?:vibe|ritual|drop|when|nah|grind|spill|borrow)\\b|\\b(?:based|cringe|ghost|whole|caption|party)\\b|\\b\\d+(?:\\.\\d+)?\\b)/g;
+  const pattern = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|#[^\n]*|\b(?:vibe|ritual|drop|when|nah|grind|spill|borrow)\b|\b(?:based|cringe|ghost|whole|caption|party)\b|\b\d+(?:\.\d+)?\b)/g;
   let html = "";
   let last = 0;
   for (const match of source.matchAll(pattern)) {
@@ -27,7 +27,7 @@ function updateSyntax() {
     let kind = "number";
     if (token.startsWith("#")) kind = "comment";
     else if (token.startsWith('"') || token.startsWith("'")) kind = "string";
-    else if (/^(based|cringe|ghost|whole|caption|party)$/.test(token)) kind = "value";
+    else if (/^\d/.test(token)) kind = "number";
     else if (/^\\d/.test(token)) kind = "number";
     else kind = "keyword";
     html += '<span class="tok-' + kind + '">' + escapeHTML(token) + "</span>";
@@ -51,7 +51,7 @@ function updateDirty() {
 function log(text, type = "stdout") {
   const line = document.createElement("div");
   line.className = type;
-  line.textContent = String(text).replace(/\\s+$/, "");
+  line.textContent = String(text).replace(/\s+$/, "");
   output.appendChild(line);
   output.scrollTop = output.scrollHeight;
 }
