@@ -49,3 +49,14 @@ textarea::selection{background:rgba(126,150,210,.35);-webkit-text-fill-color:tra
 .manifest-card p{margin:3px 0;color:#9298a8;overflow-wrap:anywhere}
 .manifest-entry{margin-top:7px;padding:6px 8px;border:1px solid #454958;border-radius:5px;background:#252833;color:#dce3f0;font-size:10px}
 .manifest-entry:hover{border-color:#a6e36b;color:#a6e36b}
+
+
+/* Terminal integrada con lista de comandos permitidos */
+.terminal{height:220px}
+.terminal-input-row{height:38px;flex:none;display:flex;align-items:center;gap:9px;padding:0 14px;border-top:1px solid #292b35;background:#171820}
+.terminal-prompt{color:#a6e36b;font:16px "JetBrains Mono",Consolas,monospace}
+.terminal-input-row input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:#e4e6ee;font:11px "JetBrains Mono",Consolas,monospace}
+.terminal-input-row input::placeholder{color:#666b7a}
+.terminal-input-row input:disabled{opacity:.55}
+.terminal-send{padding:5px 10px;border:1px solid #424654;border-radius:5px;background:#252833;color:#cdd1dd;font-size:10px}
+.terminal-send:hover{border-color:#a6e36b;color:#a6e36b}
