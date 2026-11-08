@@ -122,6 +122,48 @@ ipcMain.handle("memingo:stop", () => {
   return true;
 });
 
+function parseManifestValue(value) {
+  const trimmed = value.trim();
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) return trimmed.slice(1, -1);
+  return trimmed;
+}
+
+async function readProjectManifest(root) {
+  const manifestPath = path.join(root, "memingo.toml");
+  let source;
+  try {
+    const stat = await fs.stat(manifestPath);
+    if (!stat.isFile() || stat.size > 64 * 1024) return { exists: true, valid: false, error: "memingo.toml supera el límite de 64 KB o no es un archivo." };
+    source = await fs.readFile(manifestPath, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return { exists: false };
+    return { exists: true, valid: false, error: error.message };
+  }
+  const sections = {};
+  let section = "";
+  for (const rawLine of source.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const sectionMatch = line.match(/^\[([A-Za-z0-9_.-]+)\]$/);
+    if (sectionMatch) { section = sectionMatch[1]; sections[section] ||= {}; continue; }
+    const fieldMatch = line.match(/^([A-Za-z0-9_-]+)\s*=\s*(.*?)\s*(?:#.*)?$/);
+    if (fieldMatch && section) sections[section][fieldMatch[1]] = parseManifestValue(fieldMatch[2]);
+  }
+  const packageInfo = sections.package || sections.project || {};
+  const entry = String(packageInfo.entry || "main.mgo");
+  const entryPath = path.resolve(root, entry);
+  const relativeEntry = path.relative(root, entryPath);
+  if (relativeEntry.startsWith("..") || path.isAbsolute(relativeEntry)) return { exists: true, valid: false, error: "La ruta del archivo principal sale del proyecto." };
+  const entryStat = await fs.stat(entryPath).catch(() => null);
+  return {
+    exists: true, valid: true,
+    name: String(packageInfo.name || path.basename(root)),
+    version: String(packageInfo.version || "0.0.0"),
+    entry, entryPath, entryExists: Boolean(entryStat && entryStat.isFile()),
+    dependencyCount: Object.keys(sections.dependencies || {}).length
+  };
+}
+
 ipcMain.handle("project:open", async () => {
   const result = await dialog.showOpenDialog(mainWindow, { properties: ["openDirectory"] });
   if (result.canceled || !result.filePaths[0]) return null;
@@ -141,7 +183,7 @@ ipcMain.handle("project:open", async () => {
     }
     return items;
   }
-  return { path: projectRoot, name: path.basename(projectRoot), tree: await scan(projectRoot) };
+  return { path: projectRoot, name: path.basename(projectRoot), manifest: await readProjectManifest(projectRoot), tree: await scan(projectRoot) };
 });
 
 ipcMain.handle("project:open-file", async (_event, filePath) => {
