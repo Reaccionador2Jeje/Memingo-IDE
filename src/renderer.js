@@ -925,14 +925,15 @@ function handleAgentEvent(event) {
     showAgentPermission(event);
     return;
   }
-  if (type === "message.part.updated" || type === "message.part.delta") {
+  if (type === "message.part.updated" || type === "message.part.delta" || type === "session.text.delta" || type === "session.text.ended") {
     const part = props.part || props;
     if (part.type === "text") {
       const key = String(part.id || props.messageID || "answer");
-      if (type === "message.part.delta") {
+      if (type === "message.part.delta" || type === "session.text.delta") {
         const delta = typeof props.delta === "string" ? props.delta : (typeof part.delta === "string" ? part.delta : "");
         if (delta) agentTextParts.set(key, (agentTextParts.get(key) || "") + delta);
       } else if (typeof part.text === "string") agentTextParts.set(key, part.text);
+      else if (type === "session.text.ended" && typeof props.text === "string") agentTextParts.set(key, props.text);
       renderAgentText();
     }
     return;
