@@ -41,6 +41,7 @@ app.whenReady().then(() => {
 app.on("before-quit", () => {
   if (agentEventAbort) agentEventAbort.abort();
   if (agentProcess) agentProcess.kill();
+  agentAuthorization = null;
 });
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
@@ -187,7 +188,7 @@ ipcMain.handle("agents:connect", async () => {
   });
   child.on("exit", code => {
     if (agentProcess === child) {
-      agentProcess = null; agentPort = null; agentSessionId = null;
+      agentProcess = null; agentPort = null; agentSessionId = null; agentAuthorization = null;
       sendAgentEvent({ type: "agent.disconnected", code });
     }
   });
