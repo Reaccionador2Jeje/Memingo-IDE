@@ -53,11 +53,19 @@ function currentLanguageInfo() {
     if (selected) return selected;
   }
   const fileName = (tab?.name || (tab?.path ? basename(tab.path) : "main.mgo")).toLowerCase();
-  const extension = fileName.includes(".") ? fileName.split(".").pop() : "";
-  const match = languageRegistry.find(language => language.extensions.includes(extension));
+  const special = languageRegistry.find(language => (language.fileNames || []).some(name => {
+    const candidate = name.toLowerCase();
+    return fileName === candidate || (candidate.startsWith(".") && fileName.endsWith(candidate));
+  }));
+  if (special) return special;
+  const extension = fileName.includes(".") ? fileName.split(".").pop() : fileName;
+  const priority = { v: "verilog", m: "matlab", pl: "perl", h: "c", f: "fortran" };
+  const preferred = priority[extension];
+  const match = preferred
+    ? languageRegistry.find(language => language.id === preferred && language.extensions.includes(extension))
+    : languageRegistry.find(language => language.extensions.includes(extension));
   if (match) return match;
   if (extension === "mgo" || extension === "mgoa") return { id: "memingo", name: "Memingo", category: "memingo", keywords: "" };
-  if (fileName === "dockerfile" || fileName === "makefile") return { id: fileName, name: fileName === "dockerfile" ? "Dockerfile" : "Makefile", category: "script", keywords: "" };
   return { id: "plaintext", name: "Texto plano", category: "plain", keywords: "" };
 }
 function updateSyntax() {
