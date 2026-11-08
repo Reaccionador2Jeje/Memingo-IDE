@@ -22,6 +22,15 @@ contextBridge.exposeInMainWorld("memingoIDE", {
   stageConflictFile: payload => ipcRenderer.invoke("vcs:conflict-stage", payload),
   listAgentEngines: () => ipcRenderer.invoke("agents:list"),
   listLanguages: () => ipcRenderer.invoke("languages:list"),
+  listLanguageServers: () => ipcRenderer.invoke("lsp:servers"),
+  startLanguageServer: payload => ipcRenderer.invoke("lsp:start", payload),
+  changeLanguageDocument: payload => ipcRenderer.invoke("lsp:change", payload),
+  stopLanguageServer: () => ipcRenderer.invoke("lsp:stop"),
+  onLspEvent: callback => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on("lsp:event", listener);
+    return () => ipcRenderer.removeListener("lsp:event", listener);
+  },
   connectAgent: payload => ipcRenderer.invoke("agents:connect", payload),
   sendAgentPrompt: payload => ipcRenderer.invoke("agents:send", payload),
   answerAgentPermission: payload => ipcRenderer.invoke("agents:permission", payload),
