@@ -1,0 +1,6 @@
+{
+  "appId": "dev.atdev.memingoide",
+  "appName": "Memingo IDE",
+  "webDir": "mobile",
+  "bundledWebRuntime": false
+}
