@@ -880,7 +880,7 @@ function showAgentPermission(event) {
   const title = document.createElement("strong");
   title.textContent = "El agente solicita permiso";
   const detail = document.createElement("p");
-  detail.textContent = String(request.description || request.message || request.type || "Quiere realizar una acción en el proyecto. Revisa los detalles antes de aprobar.") + (request.patterns ? "\n" + JSON.stringify(request.patterns) : "");
+  detail.textContent = String(request.description || request.message || request.type || "Quiere realizar una acción en el proyecto. Revisa los detalles antes de aprobar.") + (request.resources ? "\nRecursos: " + request.resources.join(", ") : (request.patterns ? "\n" + JSON.stringify(request.patterns) : ""));
   const once = document.createElement("button");
   once.type = "button"; once.className = "agent-approve"; once.textContent = "Permitir una vez";
   once.addEventListener("click", async () => {
@@ -925,15 +925,21 @@ function handleAgentEvent(event) {
     showAgentPermission(event);
     return;
   }
-  if (type === "message.part.updated" || type === "message.part.delta" || type === "session.text.delta" || type === "session.text.ended") {
+  if (type === "session.text.delta") {
+    const key = String(props.messageID || "answer");
+    const delta = typeof props.delta === "string" ? props.delta : "";
+    if (delta) { agentTextParts.set(key, (agentTextParts.get(key) || "") + delta); renderAgentText(); }
+    return;
+  }
+  if (type === "session.text.ended") return;
+  if (type === "message.part.updated" || type === "message.part.delta") {
     const part = props.part || props;
     if (part.type === "text") {
       const key = String(part.id || props.messageID || "answer");
-      if (type === "message.part.delta" || type === "session.text.delta") {
+      if (type === "message.part.delta") {
         const delta = typeof props.delta === "string" ? props.delta : (typeof part.delta === "string" ? part.delta : "");
         if (delta) agentTextParts.set(key, (agentTextParts.get(key) || "") + delta);
       } else if (typeof part.text === "string") agentTextParts.set(key, part.text);
-      else if (type === "session.text.ended" && typeof props.text === "string") agentTextParts.set(key, props.text);
       renderAgentText();
     }
     return;
