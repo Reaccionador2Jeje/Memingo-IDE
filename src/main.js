@@ -5,6 +5,7 @@ const path = require("node:path");
 const net = require("node:net");
 const { randomBytes } = require("node:crypto");
 const { getAgentEngine, listAgentEngines, getAgentProfile, listAgentProfiles } = require("./agents/registry");
+const { assertAdapterOperation, listProtocolAdapters } = require("./agents/adapter-contract");
 
 let mainWindow;
 let activeProcess = null;
@@ -306,12 +307,13 @@ async function streamAgentEvents(port, signal) {
     if (!signal.aborted) sendAgentEvent({ type: "agent.connection.error", message: error.message });
   }
 }
-ipcMain.handle("agents:list", async () => ({ engines: listAgentEngines(), profiles: listAgentProfiles() }));
+ipcMain.handle("agents:list", async () => ({ engines: listAgentEngines(), profiles: listAgentProfiles(), adapters: listProtocolAdapters() }));
 
 ipcMain.handle("agents:connect", async (_event, payload = {}) => {
   const engine = typeof payload.engine === "string" ? payload.engine : "opencode";
   const engineDefinition = getAgentEngine(engine);
   if (!engineDefinition) throw new Error("Motor de agente no registrado. Actualiza Memingo IDE.");
+  assertAdapterOperation(engineDefinition.protocol, "connect");
   activeAgentEngine = engine;
   if (engineDefinition.protocol === "acp") return connectGoose();
   if (!projectRoot) throw new Error("Abre una carpeta de proyecto antes de conectar un agente.");
@@ -373,6 +375,7 @@ ipcMain.handle("agents:send", async (_event, payload = {}) => {
   const engine = typeof payload.engine === "string" ? payload.engine : activeAgentEngine;
   const engineDefinition = getAgentEngine(engine);
   if (!engineDefinition) throw new Error("Motor de agente no registrado.");
+  assertAdapterOperation(engineDefinition.protocol, "send");
   const prompt = typeof payload.prompt === "string" ? payload.prompt.trim() : "";
   const profile = typeof payload.profile === "string" ? payload.profile : "plan";
   const profileDefinition = getAgentProfile(profile);
@@ -409,6 +412,7 @@ ipcMain.handle("agents:send", async (_event, payload = {}) => {
 ipcMain.handle("agents:permission", async (_event, payload = {}) => {
   const permissionEngine = getAgentEngine(typeof payload.engine === "string" ? payload.engine : activeAgentEngine);
   if (!permissionEngine) throw new Error("Motor de agente no registrado.");
+  assertAdapterOperation(permissionEngine.protocol, "permission");
   if (permissionEngine.protocol === "acp") {
     const id = payload.id;
     const validId = (typeof id === "number" && Number.isSafeInteger(id)) || (typeof id === "string" && id.length > 0 && id.length <= 160);
@@ -425,6 +429,8 @@ ipcMain.handle("agents:permission", async (_event, payload = {}) => {
   return agentApiCompat("POST", "/api" + sessionPath + "/permission/" + requestId + "/reply", sessionPath + "/permissions/" + requestId, { response, remember: false });
 });
 ipcMain.handle("agents:stop", async () => {
+  const stopEngine = getAgentEngine(activeAgentEngine);
+  if (stopEngine) assertAdapterOperation(stopEngine.protocol, "stop");
   if (activeAgentEngine === "goose" && gooseProcess && gooseSessionId) {
     await gooseRequest("session/cancel", { sessionId: gooseSessionId }, 10000).catch(() => null);
     return { stopped: true };
@@ -435,6 +441,8 @@ ipcMain.handle("agents:stop", async () => {
   return { stopped: true };
 });
 ipcMain.handle("agents:disconnect", async () => {
+  const disconnectEngine = getAgentEngine(activeAgentEngine);
+  if (disconnectEngine) assertAdapterOperation(disconnectEngine.protocol, "disconnect");
   await disconnectGoose();
   activeAgentEngine = "opencode";
   if (agentEventAbort) { agentEventAbort.abort(); agentEventAbort = null; }
