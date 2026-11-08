@@ -34,6 +34,9 @@ let projectPath = null;
 let logEntries = [];
 let suggestionItems = [];
 let languageRegistry = [];
+let languageServerRegistry = [];
+let activeLspKey = null;
+let lspChangeTimer = null;
 let languageOverrides = new Map();
 let suggestionIndex = 0;
 let outputMode = "console";
@@ -113,6 +116,65 @@ function updateSyntax() {
   html += escapeHTML(source.slice(last));
   syntaxLayer.innerHTML = html + "\n";
 }
+async function connectLspForActiveTab() {
+  const tab = activeTab();
+  const language = currentLanguageInfo();
+  const server = languageServerRegistry.find(item => item.languageId === language.id);
+  if (!tab?.path || !projectPath || !server) {
+    if (activeLspKey) window.memingoIDE.stopLanguageServer().catch(()=>{});
+    activeLspKey = null;
+    return;
+  }
+  const key = tab.path + "::" + language.id;
+  if (activeLspKey === key) return;
+  activeLspKey = key;
+  try {
+    const result = await window.memingoIDE.startLanguageServer({ path:tab.path, languageId:language.id, text:editor.value });
+    if (activeLspKey !== key) return;
+    if (result?.connected) {
+      statusText.textContent = "LSP: " + language.name;
+      log("Servidor de lenguaje conectado: " + result.command, "hint-line");
+    } else {
+      activeLspKey = null;
+    }
+  } catch (error) {
+    if (activeLspKey === key) activeLspKey = null;
+    statusText.textContent = "LSP no disponible";
+    log("LSP: " + error.message, "stderr");
+  }
+}
+function sendLspDocumentChange() {
+  const tab = activeTab();
+  if (!tab?.path || !activeLspKey || !activeLspKey.startsWith(tab.path + "::")) return;
+  clearTimeout(lspChangeTimer);
+  const text = editor.value;
+  lspChangeTimer = setTimeout(() => {
+    window.memingoIDE.changeLanguageDocument({ text }).catch(error => log("LSP: " + error.message, "stderr"));
+  }, 250);
+}
+async function loadLanguageServers() {
+  try { languageServerRegistry = await window.memingoIDE.listLanguageServers(); }
+  catch (error) { log("No se pudo cargar la lista de servidores LSP: " + error.message, "stderr"); }
+}
+window.memingoIDE.onLspEvent(event => {
+  if (event.type === "lsp.diagnostics") {
+    const diagnostics = Array.isArray(event.diagnostics) ? event.diagnostics : [];
+    if (!diagnostics.length) return;
+    const errors = diagnostics.filter(item => item.severity === 1).length;
+    const warnings = diagnostics.filter(item => item.severity === 2).length;
+    log("LSP encontró " + errors + " error(es) y " + warnings + " advertencia(s).", errors ? "stderr" : "hint-line");
+    for (const item of diagnostics.slice(0, 12)) {
+      const line = Number.isInteger(item.range?.start?.line) ? item.range.start.line + 1 : "?";
+      log("Línea " + line + ": " + (item.message || "Diagnóstico"), item.severity === 1 ? "stderr" : "hint-line");
+    }
+  } else if (event.type === "lsp.error") {
+    activeLspKey = null;
+    statusText.textContent = "LSP desconectado";
+    log("LSP: " + event.message, "stderr");
+  } else if (event.type === "lsp.stopped") {
+    activeLspKey = null;
+  }
+});
 async function loadLanguageRegistry() {
   try {
     const languages = await window.memingoIDE.listLanguages();
@@ -226,6 +288,7 @@ function switchTab(id, saveCurrent = true) {
   statusText.textContent = tab.dirty ? "Cambios sin guardar" : "Listo";
   hideAutocomplete();
   editor.focus();
+  connectLspForActiveTab();
 }
 function addTab(file) {
   const existing = file.path && tabs.find(tab => tab.path === file.path);
@@ -633,6 +696,7 @@ document.getElementById("problemsTab").addEventListener("click",()=>{
 });
 editor.addEventListener("input",()=>{
   updateLines(); updateSyntax(); updateDirty();
+  sendLspDocumentChange();
   if (outputMode==="problems") showProblems();
   showAutocomplete();
 });
@@ -660,6 +724,7 @@ window.memingoIDE.onOutput(data=>log(data.text,data.type));
 tabs.push({id:makeId(),path:null,name:"Sin título.mgo",content:editor.value,savedContent:editor.value,dirty:false});
 activeTabId=tabs[0].id;
 renderTabs();updateLines();updateSyntax();
+loadLanguageServers();
 
 function renderGitChanges(raw) {
   const container = document.getElementById("gitChanges");
