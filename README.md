@@ -120,3 +120,12 @@ El panel muestra hasta 30 commits recientes con hash corto, autor, fecha y mensa
 - Fusiona otra rama en la actual con confirmación previa. Si Git detecta conflictos, la operación queda pendiente para resolverlos.
 - La sección **Conflictos** permite abrir cada archivo en un editor, guardar la resolución y marcarlo como resuelto (git add). También permite cancelar una fusión pendiente con `git merge --abort`.
 - Los nombres de rama se validan con `git check-ref-format`; las operaciones usan argumentos separados y no ejecutan shell.
+
+
+### Gestor de ramas y conflictos
+
+- Consulta las ramas locales y reconoce la rama actual.
+- Crea ramas nuevas y cambia de rama cuando el árbol de trabajo está limpio.
+- Fusiona otra rama en la actual con confirmación previa. Si Git detecta conflictos, la operación queda pendiente para resolverlos.
+- La sección **Conflictos** permite abrir cada archivo en un editor, guardar la resolución y marcarlo como resuelto (git add). También permite cancelar una fusión pendiente con `git merge --abort`.
+- Los nombres de rama se validan con `git check-ref-format`; las operaciones usan argumentos separados y no ejecutan shell.
