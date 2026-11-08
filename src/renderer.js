@@ -360,6 +360,51 @@ function moveSuggestion(delta) {
   suggestionIndex = (suggestionIndex + delta + suggestionItems.length) % suggestionItems.length;
   [...autocomplete.children].forEach((item,index)=>item.classList.toggle("chosen",index===suggestionIndex));
 }
+
+async function checkFile() {
+  const tab = activeTab();
+  if (!tab) return;
+  if (!tab.path || editor.value !== tab.savedContent) {
+    const saved = await saveFile();
+    if (!saved) return;
+  }
+  showConsole();
+  log("$ memingo check " + basename(tab.path), "hint-line");
+  try {
+    const result = await window.memingoIDE.check(tab.path);
+    if (result.stdout) log(result.stdout);
+    if (result.stderr) log(result.stderr, "stderr");
+    log(result.code === 0 ? "✓ Memingo validó el archivo correctamente." : "La validación terminó con código " + result.code, result.code === 0 ? "hint-line" : "stderr");
+  } catch (error) { log(error.message, "stderr"); }
+}
+async function formatFile() {
+  const tab = activeTab();
+  if (!tab) return;
+  if (!tab.path || editor.value !== tab.savedContent) {
+    const saved = await saveFile();
+    if (!saved) return;
+  }
+  showConsole();
+  log("$ memingo fmt " + basename(tab.path), "hint-line");
+  try {
+    const result = await window.memingoIDE.format(tab.path);
+    if (result.stdout) log(result.stdout);
+    if (result.stderr) log(result.stderr, "stderr");
+    if (result.code !== 0) {
+      log("El formateador terminó con código " + result.code, "stderr");
+      return;
+    }
+    if (typeof result.content === "string") {
+      editor.value = result.content;
+      tab.content = result.content;
+      tab.savedContent = result.content;
+      tab.dirty = false;
+      updateLines(); updateSyntax(); renderTabs();
+      statusText.textContent = "Listo";
+      log("✓ Archivo formateado y actualizado en el editor.", "hint-line");
+    }
+  } catch (error) { log(error.message, "stderr"); }
+}
 document.getElementById("projectBtn").addEventListener("click",openProject);
 document.getElementById("sideProject").addEventListener("click",openProject);
 document.getElementById("newBtn").addEventListener("click",newFile);
