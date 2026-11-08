@@ -65,7 +65,7 @@ function updateSyntax() {
 }
 let breakpoints = new Set();
 function renderGutter() {
-  const count = Math.max(1, editor.value.split("\\n").length);
+  const count = Math.max(1, editor.value.split("\n").length);
   gutter.replaceChildren();
   for (let line = 1; line <= count; line++) {
     const marker = document.createElement("button");
