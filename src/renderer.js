@@ -367,6 +367,8 @@ document.getElementById("openBtn").addEventListener("click",openFile);
 document.getElementById("sideOpen").addEventListener("click",openFile);
 document.getElementById("saveBtn").addEventListener("click",saveFile);
 document.getElementById("runBtn").addEventListener("click",runFile);
+document.getElementById("checkBtn").addEventListener("click",checkFile);
+document.getElementById("formatBtn").addEventListener("click",formatFile);
 document.getElementById("stopBtn").addEventListener("click",()=>window.memingoIDE.stop());
 document.getElementById("clearOutput").addEventListener("click",()=>{logEntries=[];renderOutput();});
 document.getElementById("consoleTab").addEventListener("click",showConsole);
