@@ -44,7 +44,7 @@ function escapeHTML(value) {
 }
 function updateSyntax() {
   const source = editor.value;
-  const pattern = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|#[^\n]*|\b(?:vibe|ritual|drop|when|nah|grind|spill|borrow)\b|\b(?:based|cringe|ghost|whole|caption|party)\b|\b\d+(?:\.\d+)?\b)/g;
+  const pattern = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|#[^\n]*|\b(?:vibe|ritual|drop|when|nah|grind|spill|borrow)\b|\b(?:based|cringe|ghost|whole|caption|party)\b|\b(?:headcount|whatkind|json_parse|json_stringify|env|range|keys|push|append|set_value|delete_key|random|random_int|http_get|http_post|trim|join|split|sort|map|filter|reduce|sum|min|max|clamp|parse_int|parse_float|repeat|lines|unique|meme_case|shuffle|uuid|now|sleep|read_file|write_file|file_exists|list_files)\b|\b\d+(?:\.\d+)?\b)/g;
   let html = "";
   let last = 0;
   for (const match of source.matchAll(pattern)) {
@@ -55,6 +55,7 @@ function updateSyntax() {
     else if (token.startsWith('"') || token.startsWith("'")) kind = "string";
     else if (/^\d/.test(token)) kind = "number";
     else if (/^(based|cringe|ghost|whole|caption|party)$/.test(token)) kind = "value";
+    else if (/^(headcount|whatkind|json_parse|json_stringify|env|range|keys|push|append|set_value|delete_key|random|random_int|http_get|http_post|trim|join|split|sort|map|filter|reduce|sum|min|max|clamp|parse_int|parse_float|repeat|lines|unique|meme_case|shuffle|uuid|now|sleep|read_file|write_file|file_exists|list_files)$/.test(token)) kind = "builtin";
     else kind = "keyword";
     html += '<span class="tok-' + kind + '">' + escapeHTML(token) + "</span>";
     last = match.index + token.length;
