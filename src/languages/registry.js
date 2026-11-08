@@ -135,9 +135,15 @@ function getLanguageByExtension(extension) {
 }
 
 function listLanguages() {
-  const seen = new Set();
-  return DEFINITIONS.filter(([id]) => !seen.has(id) && seen.add(id))
-    .map(([id, name, extensions, category]) => ({ id, name, extensions: [...extensions], category, keywords: KEYWORDS[category] || "" }));
+  const grouped = new Map();
+  for (const [id, name, extensions, category] of DEFINITIONS) {
+    if (!grouped.has(id)) grouped.set(id, { id, name, extensions: [], category, keywords: KEYWORDS[category] || "" });
+    const entry = grouped.get(id);
+    for (const extension of extensions) {
+      if (!entry.extensions.includes(extension)) entry.extensions.push(extension);
+    }
+  }
+  return [...grouped.values()];
 }
 
 function getSupportedExtensions() {
