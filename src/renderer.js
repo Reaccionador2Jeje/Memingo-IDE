@@ -646,6 +646,91 @@ async function runGitFileAction(action, filePath) {
   } catch (error) { log(error.message, "stderr"); }
 }
 
+function renderGitHistory(raw) {
+  const list = document.getElementById("gitHistory");
+  list.replaceChildren();
+  const commits = raw.split(/\\r?\\n/).filter(Boolean).map(line => {
+    const parts = line.split("\\x1f");
+    return {hash:parts[0], short:parts[1], author:parts[2], date:parts[3], subject:parts.slice(4).join(" ")};
+  }).filter(item => /^[a-f0-9]{40}$/i.test(item.hash));
+  if (!commits.length) {
+    const empty = document.createElement("div");
+    empty.className = "git-empty";
+    empty.textContent = "Todavía no hay commits en este repositorio.";
+    list.appendChild(empty);
+    return;
+  }
+  for (const commit of commits) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "git-commit-row";
+    const subject = document.createElement("strong");
+    subject.textContent = commit.subject || "(sin mensaje)";
+    const meta = document.createElement("span");
+    meta.textContent = commit.short + " · " + commit.author + " · " + commit.date.replace("T"," ").slice(0,16);
+    button.append(subject, meta);
+    button.addEventListener("click", () => showGitCommit(commit));
+    list.appendChild(button);
+  }
+}
+async function refreshGitHistory() {
+  if (!projectPath) return;
+  const list = document.getElementById("gitHistory");
+  list.textContent = "Cargando historial…";
+  try {
+    const result = await window.memingoIDE.versionControl({action:"history"});
+    if (result.code !== 0) {
+      list.textContent = result.error || result.stderr || "No se pudo cargar el historial.";
+      return;
+    }
+    renderGitHistory(result.stdout || "");
+  } catch (error) { list.textContent = error.message; }
+}
+async function showGitCommit(commit) {
+  const detail = document.getElementById("gitCommitDetail");
+  detail.textContent = "Cargando commit " + commit.short + "…";
+  try {
+    const result = await window.memingoIDE.versionControlCommit({hash:commit.hash});
+    if (result.code !== 0) {
+      detail.textContent = result.error || result.stderr || "No se pudo consultar el commit.";
+      return;
+    }
+    detail.replaceChildren();
+    const heading = document.createElement("strong");
+    heading.className = "git-detail-title";
+    heading.textContent = commit.subject || "(sin mensaje)";
+    const metadata = document.createElement("div");
+    metadata.className = "git-detail-meta";
+    metadata.textContent = commit.hash + " · " + commit.author + " · " + commit.date;
+    const summary = document.createElement("pre");
+    summary.className = "git-detail-summary";
+    summary.textContent = result.stdout;
+    detail.append(heading, metadata, summary);
+    if (Array.isArray(result.files) && result.files.length) {
+      const label = document.createElement("div");
+      label.className = "git-detail-files-label";
+      label.textContent = "ARCHIVOS DEL COMMIT";
+      detail.appendChild(label);
+      for (const filePath of result.files) {
+        const fileButton = document.createElement("button");
+        fileButton.type = "button";
+        fileButton.className = "git-history-file";
+        fileButton.textContent = filePath;
+        fileButton.addEventListener("click", () => showCommitFileDiff(commit.hash, filePath));
+        detail.appendChild(fileButton);
+      }
+    }
+  } catch (error) { detail.textContent = error.message; }
+}
+async function showCommitFileDiff(hash, filePath) {
+  const view = document.getElementById("gitDiffView");
+  view.textContent = "Cargando versión del commit…";
+  try {
+    const result = await window.memingoIDE.versionControlFile({action:"commitFileDiff",path:filePath,hash});
+    view.textContent = result.code === 0 ? (result.stdout || "Este archivo no contiene diferencias en el commit.") : (result.error || result.stderr || "No se pudo comparar el archivo.");
+  } catch (error) { view.textContent = error.message; }
+}
+
 async function runGitAction(action) {
   if (!projectPath) { log("Abre un proyecto antes de usar Git.", "stderr"); return; }
   let message = "";
@@ -665,6 +750,8 @@ async function runGitAction(action) {
       log("Acción completada.", "hint-line");
       if (action === "commit") document.getElementById("gitCommitMessage").value = "";
       if (["init","stage","commit","pull","push"].includes(action)) await refreshGitChanges();
+      if (["init","commit","pull","push"].includes(action)) await refreshGitHistory();
+      if (action === "log") await refreshGitHistory();
       if (action === "status" && result.stdout) {
         const match = result.stdout.match(/## ([^\\s]+)/);
         if (match) document.getElementById("gitRepoLabel").textContent = "Rama: " + match[1];
@@ -674,6 +761,7 @@ async function runGitAction(action) {
   finally { runStatus.textContent = "● Inactivo"; }
 }
 document.getElementById("refreshGitChanges").addEventListener("click", refreshGitChanges);
+document.getElementById("refreshGitHistory").addEventListener("click", refreshGitHistory);
 document.querySelectorAll("[data-git]").forEach(button => {
   button.addEventListener("click", () => runGitAction(button.dataset.git));
 });
