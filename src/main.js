@@ -3,6 +3,7 @@ const { spawn } = require("node:child_process");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const net = require("node:net");
+const { randomBytes } = require("node:crypto");
 
 let mainWindow;
 let activeProcess = null;
@@ -11,6 +12,7 @@ let agentProcess = null;
 let agentPort = null;
 let agentSessionId = null;
 let agentEventAbort = null;
+let agentAuthorization = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -104,7 +106,7 @@ async function agentApi(method, endpoint, body) {
   if (!agentPort) throw new Error("Conecta OpenCode primero.");
   const response = await fetch("http://127.0.0.1:" + agentPort + endpoint, {
     method,
-    headers: body === undefined ? {} : { "Content-Type": "application/json" },
+    headers: { ...(agentAuthorization ? { Authorization: agentAuthorization } : {}), ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(15000)
   });
@@ -127,9 +129,9 @@ async function agentApiCompat(method, modernEndpoint, legacyEndpoint, body) {
 }
 async function streamAgentEvents(port, signal) {
   try {
-    let response = await fetch("http://127.0.0.1:" + port + "/api/event", { signal });
+    let response = await fetch("http://127.0.0.1:" + port + "/api/event", { signal, headers: agentAuthorization ? { Authorization: agentAuthorization } : {} });
     if (response.status === 404 || response.status === 405) {
-      response = await fetch("http://127.0.0.1:" + port + "/global/event", { signal });
+      response = await fetch("http://127.0.0.1:" + port + "/global/event", { signal, headers: agentAuthorization ? { Authorization: agentAuthorization } : {} });
     }
     if (!response.ok || !response.body) throw new Error("No se pudo abrir el flujo de eventos de OpenCode.");
     const reader = response.body.getReader();
@@ -164,8 +166,12 @@ ipcMain.handle("agents:connect", async () => {
   if (!stat || !stat.isDirectory()) throw new Error("La carpeta del proyecto ya no está disponible.");
   const configPath = await ensureAgentPermissions(root);
   const port = await reserveLocalPort();
+  const serverPassword = randomBytes(24).toString("hex");
+  agentAuthorization = "Basic " + Buffer.from("opencode:" + serverPassword).toString("base64");
   const child = spawn(process.platform === "win32" ? "opencode.exe" : "opencode", ["serve", "--hostname", "127.0.0.1", "--port", String(port)], {
-    cwd: root, windowsHide: true, env: process.env, shell: false
+    cwd: root, windowsHide: true,
+    env: { ...process.env, OPENCODE_SERVER_USERNAME: "opencode", OPENCODE_SERVER_PASSWORD: serverPassword },
+    shell: false
   });
   let spawnError = null;
   agentProcess = child;
@@ -175,7 +181,7 @@ ipcMain.handle("agents:connect", async () => {
   child.on("error", error => {
     spawnError = error;
     if (agentProcess === child) {
-      agentProcess = null; agentPort = null; agentSessionId = null;
+      agentProcess = null; agentPort = null; agentSessionId = null; agentAuthorization = null;
     }
     sendAgentEvent({ type: "agent.connection.error", message: error.code === "ENOENT" ? "No se encontró OpenCode. Instálalo desde opencode.ai y vuelve a conectar." : error.message });
   });
@@ -189,16 +195,17 @@ ipcMain.handle("agents:connect", async () => {
   for (let attempt = 0; attempt < 40; attempt++) {
     if (agentProcess !== child || child.exitCode !== null) break;
     try {
-      let response = await fetch("http://127.0.0.1:" + port + "/api/info", { signal: AbortSignal.timeout(1000) });
+      const authHeaders = agentAuthorization ? { Authorization: agentAuthorization } : {};
+      let response = await fetch("http://127.0.0.1:" + port + "/api/info", { headers: authHeaders, signal: AbortSignal.timeout(1000) });
       if (response.status === 404 || response.status === 405) {
-        response = await fetch("http://127.0.0.1:" + port + "/global/health", { signal: AbortSignal.timeout(1000) });
+        response = await fetch("http://127.0.0.1:" + port + "/global/health", { headers: authHeaders, signal: AbortSignal.timeout(1000) });
       }
       if (response.ok) { healthy = true; break; }
     } catch {}
     await delay(250);
   }
   if (!healthy) {
-    if (agentProcess === child) { child.kill(); agentProcess = null; agentPort = null; }
+    if (agentProcess === child) { child.kill(); agentProcess = null; agentPort = null; agentAuthorization = null; }
     if (spawnError?.code === "ENOENT") throw new Error("No se encontró OpenCode. Instálalo desde https://opencode.ai y asegúrate de que el comando opencode esté en PATH.");
     throw new Error("OpenCode no respondió. Comprueba que esté instalado y que pueda iniciarse.");
   }
@@ -248,7 +255,7 @@ ipcMain.handle("agents:stop", async () => {
 ipcMain.handle("agents:disconnect", async () => {
   if (agentEventAbort) { agentEventAbort.abort(); agentEventAbort = null; }
   if (agentProcess) { const child = agentProcess; agentProcess = null; child.kill(); }
-  agentPort = null; agentSessionId = null;
+  agentPort = null; agentSessionId = null; agentAuthorization = null;
   sendAgentEvent({ type: "agent.disconnected", message: "Agente desconectado." });
   return { disconnected: true };
 });
@@ -406,7 +413,7 @@ ipcMain.handle("project:open", async () => {
   if (result.canceled || !result.filePaths[0]) return null;
   if (agentEventAbort) { agentEventAbort.abort(); agentEventAbort = null; }
   if (agentProcess) { const previousAgent = agentProcess; agentProcess = null; previousAgent.kill(); sendAgentEvent({ type: "agent.disconnected", message: "Se cambió de proyecto. Vuelve a conectar el agente." }); }
-  agentPort = null; agentSessionId = null;
+  agentPort = null; agentSessionId = null; agentAuthorization = null;
   projectRoot = path.resolve(result.filePaths[0]);
   return { path: projectRoot, name: path.basename(projectRoot), manifest: await readProjectManifest(projectRoot), tree: await scanProjectTree(projectRoot) };
 });
