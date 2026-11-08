@@ -111,3 +111,12 @@ Esta vista se actualiza al abrir un proyecto y después de inicializar, preparar
 ### Historial visual de Git
 
 El panel muestra hasta 30 commits recientes con hash corto, autor, fecha y mensaje. Al seleccionar uno, consulta su resumen y lista de archivos modificados. Puedes seleccionar un archivo para ver el diff correspondiente a ese commit en el visor. Las consultas usan hashes completos validados y argumentos Git separados (sin shell).
+
+
+### Gestor de ramas y conflictos
+
+- Consulta las ramas locales y reconoce la rama actual.
+- Crea ramas nuevas y cambia de rama cuando el árbol de trabajo está limpio.
+- Fusiona otra rama en la actual con confirmación previa. Si Git detecta conflictos, la operación queda pendiente para resolverlos.
+- La sección **Conflictos** permite abrir cada archivo en un editor, guardar la resolución y marcarlo como resuelto (git add). También permite cancelar una fusión pendiente con `git merge --abort`.
+- Los nombres de rama se validan con `git check-ref-format`; las operaciones usan argumentos separados y no ejecutan shell.
