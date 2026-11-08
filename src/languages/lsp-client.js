@@ -40,7 +40,7 @@ class LspClient{
  async completion(position){
   const result=await this.positionRequest("textDocument/completion",position,{context:{triggerKind:1}});
   const items=Array.isArray(result)?result:(Array.isArray(result?.items)?result.items:[]);
-  return items.slice(0,100).map(item=>({label:String(item.label||"").slice(0,300),detail:String(item.detail||item.kind||"").slice(0,500),insertText:String(item.insertText||item.label||"").slice(0,2000),insertTextFormat:item.insertTextFormat===2?2:1,kind:item.kind||0,sortText:String(item.sortText||"").slice(0,300)})).filter(item=>item.label);
+  return items.slice(0,100).map(item=>({label:String(item.label||"").slice(0,300),detail:String(item.detail||item.kind||"").slice(0,500),insertText:String(item.insertText||item.label||"").slice(0,2000),insertTextFormat:item.insertTextFormat===2?2:1,textEdit:item.textEdit||null,kind:item.kind||0,sortText:String(item.sortText||"").slice(0,300)})).filter(item=>item.label);
  }
  async hover(position){
   const result=await this.positionRequest("textDocument/hover",position);
