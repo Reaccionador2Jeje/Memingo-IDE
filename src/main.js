@@ -2,10 +2,15 @@ const { app, BrowserWindow, dialog, ipcMain } = require("electron");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const net = require("node:net");
 
 let mainWindow;
 let activeProcess = null;
 let projectRoot = null;
+let agentProcess = null;
+let agentPort = null;
+let agentSessionId = null;
+let agentEventAbort = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -31,9 +36,194 @@ app.whenReady().then(() => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
+app.on("before-quit", () => {
+  if (agentEventAbort) agentEventAbort.abort();
+  if (agentProcess) agentProcess.kill();
+});
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
+
+
+function sendAgentEvent(payload) {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("agents:event", payload);
+}
+function delay(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+async function reserveLocalPort() {
+  return await new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const port = server.address().port;
+      server.close(error => error ? reject(error) : resolve(port));
+    });
+  });
+}
+async function ensureAgentPermissions(root) {
+  const configDir = path.join(root, ".opencode");
+  const configPath = path.join(configDir, "opencode.json");
+  await fs.mkdir(configDir, { recursive: true });
+  let config = {};
+  try {
+    const source = await fs.readFile(configPath, "utf8");
+    try { config = JSON.parse(source); }
+    catch { throw new Error("Tu .opencode/opencode.json tiene comentarios o formato no compatible. No lo modificamos: revisa sus permisos manualmente antes de conectar el agente."); }
+    if (!config || typeof config !== "object" || Array.isArray(config)) throw new Error("La configuración existente de OpenCode no es un objeto JSON válido.");
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  const permission = {
+    ...(config.permission && typeof config.permission === "object" && !Array.isArray(config.permission) ? config.permission : {}),
+    "*": "ask",
+    read: "allow",
+    glob: "allow",
+    grep: "allow",
+    list: "allow",
+    edit: "ask",
+    bash: { "*": "ask", "git push *": "deny" },
+    external_directory: "deny",
+    webfetch: "ask",
+    websearch: "ask",
+    task: "ask",
+    skill: "ask",
+    lsp: "allow",
+    question: "allow",
+    todowrite: "allow",
+    doom_loop: "ask"
+  };
+  config.$schema = config.$schema || "https://opencode.ai/config.json";
+  config.permission = permission;
+  await fs.writeFile(configPath, JSON.stringify(config, null, 2) + "\n", "utf8");
+  return configPath;
+}
+async function agentApi(method, endpoint, body) {
+  if (!agentPort) throw new Error("Conecta OpenCode primero.");
+  const response = await fetch("http://127.0.0.1:" + agentPort + endpoint, {
+    method,
+    headers: body === undefined ? {} : { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+    signal: AbortSignal.timeout(15000)
+  });
+  const raw = await response.text();
+  let data = null;
+  try { data = raw ? JSON.parse(raw) : null; } catch { data = raw; }
+  if (!response.ok) throw new Error(data?.message || data?.error || raw || ("OpenCode respondió HTTP " + response.status));
+  return data;
+}
+async function streamAgentEvents(port, signal) {
+  try {
+    const response = await fetch("http://127.0.0.1:" + port + "/global/event", { signal });
+    if (!response.ok || !response.body) throw new Error("No se pudo abrir el flujo de eventos de OpenCode.");
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while (!signal.aborted) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let boundary;
+      while ((boundary = buffer.indexOf("\n\n")) >= 0) {
+        const packet = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        const dataLine = packet.split(/\r?\n/).find(line => line.startsWith("data:"));
+        if (!dataLine) continue;
+        try {
+          const event = JSON.parse(dataLine.slice(5).trim());
+          const payload = event.payload || event;
+          sendAgentEvent(payload);
+        } catch {}
+      }
+    }
+  } catch (error) {
+    if (!signal.aborted) sendAgentEvent({ type: "agent.connection.error", message: error.message });
+  }
+}
+ipcMain.handle("agents:connect", async () => {
+  if (!projectRoot) throw new Error("Abre una carpeta de proyecto antes de conectar un agente.");
+  if (agentProcess && agentPort) return { connected: true, port: agentPort };
+  const root = path.resolve(projectRoot);
+  const stat = await fs.stat(root).catch(() => null);
+  if (!stat || !stat.isDirectory()) throw new Error("La carpeta del proyecto ya no está disponible.");
+  const configPath = await ensureAgentPermissions(root);
+  const port = await reserveLocalPort();
+  const child = spawn(process.platform === "win32" ? "opencode.exe" : "opencode", ["serve", "--hostname", "127.0.0.1", "--port", String(port)], {
+    cwd: root, windowsHide: true, env: process.env, shell: false
+  });
+  agentProcess = child;
+  agentPort = port;
+  child.stdout.on("data", data => sendAgentEvent({ type: "agent.log", text: data.toString() }));
+  child.stderr.on("data", data => sendAgentEvent({ type: "agent.log", text: data.toString() }));
+  child.on("error", error => {
+    if (agentProcess === child) {
+      agentProcess = null; agentPort = null; agentSessionId = null;
+    }
+    sendAgentEvent({ type: "agent.connection.error", message: error.code === "ENOENT" ? "No se encontró OpenCode. Instálalo desde opencode.ai y vuelve a conectar." : error.message });
+  });
+  child.on("exit", code => {
+    if (agentProcess === child) {
+      agentProcess = null; agentPort = null; agentSessionId = null;
+      sendAgentEvent({ type: "agent.disconnected", code });
+    }
+  });
+  let healthy = false;
+  for (let attempt = 0; attempt < 40; attempt++) {
+    if (agentProcess !== child || child.exitCode !== null) break;
+    try {
+      const response = await fetch("http://127.0.0.1:" + port + "/global/health", { signal: AbortSignal.timeout(1000) });
+      if (response.ok) { healthy = true; break; }
+    } catch {}
+    await delay(250);
+  }
+  if (!healthy) {
+    if (agentProcess === child) { child.kill(); agentProcess = null; agentPort = null; }
+    throw new Error("OpenCode no respondió. Comprueba que esté instalado y que pueda iniciarse.");
+  }
+  agentEventAbort = new AbortController();
+  streamAgentEvents(port, agentEventAbort.signal);
+  sendAgentEvent({ type: "agent.connected", message: "OpenCode conectado. Permisos protegidos en " + path.relative(root, configPath) });
+  return { connected: true, port };
+});
+ipcMain.handle("agents:send", async (_event, payload = {}) => {
+  if (!projectRoot || !agentPort) throw new Error("Conecta OpenCode primero.");
+  const prompt = typeof payload.prompt === "string" ? payload.prompt.trim() : "";
+  const profile = typeof payload.profile === "string" ? payload.profile : "plan";
+  if (!prompt || prompt.length > 8000) throw new Error("Escribe una petición de entre 1 y 8000 caracteres.");
+  if (!["plan", "build", "review"].includes(profile)) throw new Error("Perfil de agente no permitido.");
+  if (!agentSessionId) {
+    const session = await agentApi("POST", "/session", { title: "Memingo IDE · " + profile });
+    if (!session?.id) throw new Error("OpenCode no devolvió una sesión válida.");
+    agentSessionId = session.id;
+  }
+  const profileInstructions = {
+    plan: "Analiza el proyecto y explica en español un plan paso a paso. No modifiques archivos ni ejecutes comandos.",
+    build: "Ayuda a construir lo solicitado. Antes de cada acción que requiera permiso, espera la aprobación del usuario. Explica en español qué cambiarás y por qué. No publiques ni subas cambios a Git.",
+    review: "Revisa el proyecto buscando errores, riesgos y mejoras. No modifiques archivos ni ejecutes comandos. Explica los hallazgos en español y ordénalos por importancia."
+  };
+  const fullPrompt = profileInstructions[profile] + "\n\nPetición del usuario:\n" + prompt + "\n\nEl usuario puede ser principiante: evita jerga innecesaria, explica cada paso y pregunta si falta información importante.";
+  await agentApi("POST", "/session/" + encodeURIComponent(agentSessionId) + "/prompt_async", {
+    agent: profile === "build" ? "build" : "plan",
+    parts: [{ type: "text", text: fullPrompt }]
+  });
+  return { sent: true, sessionId: agentSessionId };
+});
+ipcMain.handle("agents:permission", async (_event, payload = {}) => {
+  if (!agentSessionId || typeof payload.id !== "string" || !/^[A-Za-z0-9_-]{1,160}$/.test(payload.id)) throw new Error("Solicitud de permiso no válida.");
+  const response = payload.response === "once" ? "once" : "reject";
+  return agentApi("POST", "/session/" + encodeURIComponent(agentSessionId) + "/permissions/" + encodeURIComponent(payload.id), { response, remember: false });
+});
+ipcMain.handle("agents:stop", async () => {
+  if (!agentSessionId || !agentPort) return { stopped: false };
+  await agentApi("POST", "/session/" + encodeURIComponent(agentSessionId) + "/abort").catch(() => null);
+  return { stopped: true };
+});
+ipcMain.handle("agents:disconnect", async () => {
+  if (agentEventAbort) { agentEventAbort.abort(); agentEventAbort = null; }
+  if (agentProcess) { const child = agentProcess; agentProcess = null; child.kill(); }
+  agentPort = null; agentSessionId = null;
+  sendAgentEvent({ type: "agent.disconnected", message: "Agente desconectado." });
+  return { disconnected: true };
+});
+
 
 ipcMain.handle("file:open", async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
