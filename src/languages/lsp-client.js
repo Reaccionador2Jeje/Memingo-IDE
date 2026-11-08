@@ -18,7 +18,7 @@ const LANGUAGE_SERVERS = Object.freeze({
   scss:{command:"vscode-css-language-server",args:["--stdio"],languageId:"scss",install:"npm install -g vscode-langservers-extracted"},
   json:{command:"vscode-json-language-server",args:["--stdio"],languageId:"json",install:"npm install -g vscode-langservers-extracted"}
 });
-function getLanguageServer(id){return LANGUAGE_SERVERS[id]||null;}
+function getLanguageServer(id){return Object.hasOwn(LANGUAGE_SERVERS,id)?LANGUAGE_SERVERS[id]:null;}
 function listLanguageServers(){return Object.entries(LANGUAGE_SERVERS).map(([languageId,s])=>({languageId,command:s.command,install:s.install}));}
 class LspClient{
  constructor(onEvent=()=>{}){this.onEvent=onEvent;this.child=null;this.buffer=Buffer.alloc(0);this.pending=new Map();this.nextId=1;this.document=null;this.version=0;}
