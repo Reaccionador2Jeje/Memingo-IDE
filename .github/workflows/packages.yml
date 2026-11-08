@@ -3,6 +3,7 @@ name: Memingo IDE packages
 on:
   workflow_dispatch:
   push:
+    branches: ["main"]
     tags:
       - "v*"
 
@@ -32,7 +33,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - name: Install dependencies
         run: npm install
       - name: Validate source
