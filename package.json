@@ -9,9 +9,9 @@
     "dist": "electron-builder",
     "check": "node --check mobile/mobile.js && node --check src/main.js && node --check src/preload.js && node --check src/renderer.js && node --check src/languages/registry.js && node --check src/languages/lsp-client.js && node --check tests/language-registry.test.js && node --check tests/lsp-client.test.js && node --check src/agents/registry.js && node --check src/agents/adapter-contract.js && node --check tests/agents-registry.test.js && node --check tests/agent-adapters.test.js",
     "test": "node --test",
-    "dist:win": "electron-builder --win nsis",
-    "dist:linux": "electron-builder --linux AppImage deb",
-    "dist:all": "electron-builder --win nsis --linux AppImage deb"
+    "dist:win": "electron-builder --win nsis --publish never",
+    "dist:linux": "electron-builder --linux AppImage --publish never",
+    "dist:all": "electron-builder --win nsis --linux AppImage --publish never"
   },
   "devDependencies": {
     "electron": "^37.2.6",
