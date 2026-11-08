@@ -1060,7 +1060,7 @@ function handleAgentEvent(event) {
 }
 window.memingoIDE.onAgentEvent(handleAgentEvent);
 
-let agentRegistry = { engines: [], profiles: [] };
+let agentRegistry = { engines: [], profiles: [], adapters: [] };
 async function loadAgentRegistry() {
   const engineSelect = document.getElementById("agentEngine");
   const profileSelect = document.getElementById("agentProfile");
@@ -1068,8 +1068,11 @@ async function loadAgentRegistry() {
     const registry = await window.memingoIDE.listAgentEngines();
     agentRegistry = {
       engines: Array.isArray(registry.engines) ? registry.engines : [],
-      profiles: Array.isArray(registry.profiles) ? registry.profiles : []
+      profiles: Array.isArray(registry.profiles) ? registry.profiles : [],
+      adapters: Array.isArray(registry.adapters) ? registry.adapters : []
     };
+    const supportedProtocols = new Set(agentRegistry.adapters.map(adapter => adapter.id));
+    agentRegistry.engines = agentRegistry.engines.filter(engine => supportedProtocols.has(engine.protocol));
     if (agentRegistry.engines.length) {
       const selected = engineSelect.value;
       engineSelect.replaceChildren();
