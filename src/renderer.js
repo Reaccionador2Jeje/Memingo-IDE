@@ -207,6 +207,36 @@ async function openProject() {
     heading.className = "project-name";
     heading.textContent = "▰  " + project.name;
     explorerRoot.appendChild(heading);
+    const manifest = project.manifest || { exists: false };
+    const projectCard = document.createElement("section");
+    projectCard.className = "manifest-card";
+    const cardTitle = document.createElement("strong");
+    cardTitle.textContent = manifest.exists ? (manifest.valid ? "Proyecto Memingo" : "Manifest inválido") : "Proyecto sin manifest";
+    projectCard.appendChild(cardTitle);
+    if (manifest.valid) {
+      const details = document.createElement("p");
+      details.textContent = manifest.name + " · v" + manifest.version;
+      projectCard.appendChild(details);
+      const entry = document.createElement("p");
+      entry.textContent = "Principal: " + manifest.entry + (manifest.entryExists ? "" : " (no encontrado)");
+      projectCard.appendChild(entry);
+      const deps = document.createElement("p");
+      deps.textContent = manifest.dependencyCount + " dependencia(s)";
+      projectCard.appendChild(deps);
+      if (manifest.entryExists) {
+        const openEntry = document.createElement("button");
+        openEntry.type = "button";
+        openEntry.className = "manifest-entry";
+        openEntry.textContent = "Abrir archivo principal";
+        openEntry.addEventListener("click", () => openProjectFile(manifest.entryPath));
+        projectCard.appendChild(openEntry);
+      }
+    } else {
+      const message = document.createElement("p");
+      message.textContent = manifest.error || "No se encontró memingo.toml. Esta carpeta se tratará como espacio de trabajo normal.";
+      projectCard.appendChild(message);
+    }
+    explorerRoot.appendChild(projectCard);
     const tree = document.createElement("div");
     tree.className = "file-tree";
     explorerRoot.appendChild(tree);
