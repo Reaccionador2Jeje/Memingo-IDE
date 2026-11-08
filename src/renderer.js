@@ -176,10 +176,12 @@ window.memingoIDE.onLspEvent(event => {
     }
   } else if (event.type === "lsp.error") {
     activeLspKey = null;
+    activeLspUri = null;
     statusText.textContent = "LSP desconectado";
     log("LSP: " + event.message, "stderr");
   } else if (event.type === "lsp.stopped") {
     activeLspKey = null;
+    activeLspUri = null;
   }
 });
 async function loadLanguageRegistry() {
