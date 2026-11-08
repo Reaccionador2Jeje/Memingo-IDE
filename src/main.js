@@ -76,6 +76,13 @@ function gooseRequest(method, params, timeout = 30000) {
     }
   });
 }
+function rejectGoosePending(error) {
+  for (const [id, pending] of goosePendingRequests) {
+    clearTimeout(pending.timer);
+    pending.reject(error);
+    goosePendingRequests.delete(id);
+  }
+}
 function finishGooseRequest(message) {
   const pending = goosePendingRequests.get(message.id);
   if (!pending) return false;
@@ -132,6 +139,7 @@ async function connectGoose() {
   child.stderr.on("data", data => sendAgentEvent({ type: "agent.log", text: data.toString() }));
   child.on("error", error => {
     if (gooseProcess === child) { gooseProcess = null; gooseSessionId = null; }
+    rejectGoosePending(new Error(error.code === "ENOENT" ? "No se encontró Goose en PATH." : error.message));
     const message = error.code === "ENOENT"
       ? "No se encontró Goose. Instálalo desde https://github.com/aaif-goose/goose y configura un proveedor."
       : error.message;
@@ -141,11 +149,7 @@ async function connectGoose() {
     if (gooseProcess === child) {
       gooseProcess = null;
       gooseSessionId = null;
-      for (const [id, pending] of goosePendingRequests) {
-        clearTimeout(pending.timer);
-        pending.reject(new Error("Goose se cerró inesperadamente."));
-        goosePendingRequests.delete(id);
-      }
+      rejectGoosePending(new Error("Goose se cerró inesperadamente."));
       goosePermissionRequests.clear();
       sendAgentEvent({ type: "agent.disconnected", engine: "goose", code });
     }
@@ -171,6 +175,7 @@ async function connectGoose() {
   }
 }
 async function disconnectGoose() {
+  const wasConnected = Boolean(gooseProcess);
   for (const id of goosePermissionRequests) {
     try { gooseSend({ jsonrpc: "2.0", id, result: { outcome: { outcome: "cancelled" } } }); } catch {}
   }
@@ -186,6 +191,7 @@ async function disconnectGoose() {
     gooseSessionId = null;
     child.kill();
   }
+  if (wasConnected) sendAgentEvent({ type: "agent.disconnected", engine: "goose", message: "Goose desconectado." });
 }
 
 function sendAgentEvent(payload) {
