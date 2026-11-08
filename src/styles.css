@@ -192,3 +192,11 @@ textarea::selection{background:rgba(126,150,210,.35);-webkit-text-fill-color:tra
 .tok-tag{color:#7dd3fc}.tok-type{color:#c4a7ff}.tok-value{color:#f0c674}.tok-builtin{color:#82cfff}.tok-keyword{color:#c792ea}.tok-string{color:#a8d68b}.tok-comment{color:#727987}.tok-number{color:#f2a97b}
 
 #languageSelect{max-width:150px;min-width:105px;padding:2px 5px;border:0;border-radius:4px;background:rgba(24,32,15,.12);color:#1c2714;font:600 10px Inter,"Segoe UI",sans-serif;outline-offset:2px}#languageSelect option{background:#171820;color:#e7e8ee}
+
+
+/* Acciones LSP */
+.lsp-tools{position:absolute;z-index:4;right:18px;top:7px;display:flex;gap:4px;padding:4px;border:1px solid #343846;border-radius:7px;background:#171922dd;backdrop-filter:blur(8px)}
+.lsp-tools button{padding:5px 7px;border:1px solid #3b4050;border-radius:4px;background:#242733;color:#cbd2df;font-size:9px}
+.lsp-tools button:hover{border-color:#a6e36b;color:#a6e36b}
+.lsp-tools button:disabled{opacity:.4}
+@media(max-width:760px){.lsp-tools{right:6px;top:5px;gap:2px}.lsp-tools button{padding:5px 4px;font-size:8px}}
