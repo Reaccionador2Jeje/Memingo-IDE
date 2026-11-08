@@ -35,6 +35,23 @@
     <aside class="side-panel">
       <div class="panel-heading">EXPLORADOR</div>
       <div class="explorer-root" id="explorerRoot"><div class="empty-explorer"><div class="folder-icon">▰</div><strong>Tu espacio de trabajo</strong><p>Abre una carpeta de proyecto para explorar sus archivos Memingo.</p><button id="sideProject" class="outline">Abrir proyecto</button><button id="sideOpen" class="outline">Abrir archivo suelto</button></div></div>
+      <section class="git-panel">
+        <div class="git-panel-title">CONTROL DE VERSIONES</div>
+        <div class="git-repo" id="gitRepoLabel">Abre un proyecto para empezar</div>
+        <div class="git-actions">
+          <button class="outline" data-git="status">Estado</button>
+          <button class="outline" data-git="diff">Cambios</button>
+          <button class="outline" data-git="log">Historial</button>
+          <button class="outline" data-git="branch">Rama</button>
+          <button class="outline" data-git="stage">Preparar todo</button>
+          <button class="outline" data-git="commit">Commit</button>
+          <button class="outline" data-git="pull">Pull</button>
+          <button class="outline" data-git="push">Push</button>
+          <button class="outline" data-git="githubAuth">GitHub: sesión</button>
+          <button class="outline" data-git="githubRepo">GitHub: repo</button>
+        </div>
+        <input id="gitCommitMessage" class="git-commit-message" maxlength="200" placeholder="Mensaje del commit…" aria-label="Mensaje del commit">
+      </section>
       <div class="help-card"><span class="help-dot"></span><strong>Memingo Runtime</strong><p>Para ejecutar código necesitas tener Memingo instalado y disponible en PATH.</p><a href="https://github.com/Reaccionador2Jeje/Memingo">Ver runtime ↗</a></div>
     </aside>
   </main>
