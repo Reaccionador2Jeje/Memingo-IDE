@@ -2,6 +2,8 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("memingoIDE", {
   openFile: () => ipcRenderer.invoke("file:open"),
+  openProject: () => ipcRenderer.invoke("project:open"),
+  openProjectFile: filePath => ipcRenderer.invoke("project:open-file", filePath),
   saveFile: payload => ipcRenderer.invoke("file:save", payload),
   newFile: () => ipcRenderer.invoke("file:new"),
   run: filePath => ipcRenderer.invoke("memingo:run", filePath),
