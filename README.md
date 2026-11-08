@@ -63,3 +63,11 @@ The renderer runs with context isolation, sandboxing and Node integration disabl
 ## License
 
 BSL License.
+
+
+## Herramientas del runtime desde el IDE
+
+- **Comprobar** ejecuta `memingo check <archivo.mgo>` y muestra los diagnósticos del parser oficial.
+- **Formatear** ejecuta `memingo fmt <archivo.mgo>`, actualiza el archivo guardado y sincroniza el editor.
+- Ambas herramientas requieren el runtime Memingo instalado y disponible en `PATH`.
+- El panel PROBLEMAS conserva el análisis rápido local de delimitadores; **Comprobar** es la validación real del runtime.
