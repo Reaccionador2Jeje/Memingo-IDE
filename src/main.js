@@ -154,3 +154,46 @@ ipcMain.handle("project:open-file", async (_event, filePath) => {
   if (!stat.isFile() || stat.size > 2 * 1024 * 1024) throw new Error("El archivo no es válido o supera 2 MB.");
   return { path: absolute, content: await fs.readFile(absolute, "utf8") };
 });
+
+
+async function runMemingoTool(event, command, filePath) {
+  if (typeof filePath !== "string" || !filePath.trim()) {
+    throw new Error("Guarda el archivo .mgo antes de usar esta herramienta.");
+  }
+  if (activeProcess) throw new Error("Ya hay un proceso Memingo en ejecución.");
+  const absolutePath = path.resolve(filePath);
+  const stat = await fs.stat(absolutePath).catch(() => null);
+  if (!stat || !stat.isFile() || !/\\.mgo$/i.test(absolutePath)) {
+    throw new Error("Selecciona un archivo .mgo válido.");
+  }
+  return await new Promise(resolve => {
+    const child = spawn(process.platform === "win32" ? "memingo.exe" : "memingo", [command, absolutePath], {
+      cwd: path.dirname(absolutePath), windowsHide: true, env: process.env
+    });
+    activeProcess = child;
+    let stdout = "", stderr = "", settled = false;
+    const finish = result => {
+      if (settled) return;
+      settled = true;
+      if (activeProcess === child) activeProcess = null;
+      resolve(result);
+    };
+    child.stdout.on("data", data => { stdout += data.toString(); });
+    child.stderr.on("data", data => { stderr += data.toString(); });
+    child.on("error", error => finish({
+      code: -1,
+      error: error.code === "ENOENT" ? "No se encontró Memingo. Comprueba que esté instalado y disponible en PATH." : error.message
+    }));
+    child.on("close", async code => {
+      let content = null;
+      if (command === "fmt" && code === 0) {
+        try { content = await fs.readFile(absolutePath, "utf8"); }
+        catch (error) { stderr += error.message; code = 1; }
+      }
+      finish({ code: code ?? -1, stdout, stderr, content });
+    });
+  });
+}
+
+ipcMain.handle("memingo:check", (_event, filePath) => runMemingoTool(_event, "check", filePath));
+ipcMain.handle("memingo:format", (_event, filePath) => runMemingoTool(_event, "fmt", filePath));
