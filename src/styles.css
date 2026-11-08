@@ -78,3 +78,17 @@ textarea::selection{background:rgba(126,150,210,.35);-webkit-text-fill-color:tra
 .git-actions .outline{padding:6px 4px;font-size:9px;white-space:nowrap}
 .git-commit-message{width:100%;margin-top:7px;padding:7px 8px;border:1px solid #383b48;border-radius:5px;outline:0;background:#20222b;color:#e4e6ee;font:10px "Segoe UI",sans-serif}
 .git-commit-message:focus{border-color:#a6e36b}
+
+/* Source Control: lista de cambios y visor diff */
+.source-control-head{display:flex;align-items:center;justify-content:space-between;padding:9px 3px 5px;color:#aeb2c0;font-size:9px;letter-spacing:.8px}
+.source-control-head .outline{padding:4px 7px;font-size:9px}
+.git-changes{max-height:170px;overflow:auto;border:1px solid #2d303b;border-radius:6px;background:#12141b}
+.git-empty{padding:10px;color:#858b9c;font-size:10px;line-height:1.5}
+.git-change-row{display:flex;align-items:center;gap:5px;padding:4px 5px;border-bottom:1px solid #252833}
+.git-change-row:last-child{border-bottom:0}
+.git-file-state{width:22px;flex:none;color:#e8bd69;font:10px "JetBrains Mono",monospace;text-align:center}
+.git-file-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;background:transparent;color:#cbd0dc;font:10px "JetBrains Mono",monospace}
+.git-file-name:hover{color:#a6e36b}
+.git-file-action{flex:none;padding:4px 6px;border:1px solid #414553;border-radius:4px;background:#222530;color:#aeb5c4;font-size:9px}
+.git-file-action:hover{border-color:#a6e36b;color:#a6e36b}
+.git-diff-view{max-height:145px;min-height:65px;overflow:auto;margin:8px 0 0;padding:8px;border:1px solid #2d303b;border-radius:6px;background:#101117;color:#bfc5d2;white-space:pre-wrap;overflow-wrap:anywhere;font:9px/1.55 "JetBrains Mono",monospace}
