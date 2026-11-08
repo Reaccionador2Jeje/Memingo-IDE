@@ -142,10 +142,10 @@ async function streamAgentEvents(port, signal) {
       const { value, done } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
-      let boundary;
-      while ((boundary = buffer.indexOf("\n\n")) >= 0) {
-        const packet = buffer.slice(0, boundary);
-        buffer = buffer.slice(boundary + 2);
+      let boundaryMatch;
+      while ((boundaryMatch = /\r?\n\r?\n/.exec(buffer)) !== null) {
+        const packet = buffer.slice(0, boundaryMatch.index);
+        buffer = buffer.slice(boundaryMatch.index + boundaryMatch[0].length);
         const dataLine = packet.split(/\r?\n/).find(line => line.startsWith("data:"));
         if (!dataLine) continue;
         try {
