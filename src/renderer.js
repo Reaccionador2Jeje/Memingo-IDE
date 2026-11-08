@@ -572,12 +572,20 @@ function scheduleLspCompletion(){if(!activeLspKey||currentLanguageInfo().id==="m
 function locationParts(location){const uri=location?.targetUri||location?.uri,range=location?.targetSelectionRange||location?.targetRange||location?.range;return uri?{uri,range}:null;}
 async function navigateLspLocation(location){
  const part=locationParts(location);if(!part)return;let targetPath="";
- try{const url=new URL(part.uri);if(url.protocol!=="file:")throw new Error();targetPath=decodeURIComponent(url.pathname);if(targetPath.startsWith("/") && targetPath.charAt(2)===":")targetPath=targetPath.slice(1);}catch{log("La ubicación LSP no es un archivo local.","hint-line");return;}
+ try{
+  const url=new URL(part.uri);if(url.protocol!=="file:")throw new Error();
+  targetPath=decodeURIComponent(url.pathname);
+  if(targetPath.startsWith("/")&&targetPath.charAt(2)===":")targetPath=targetPath.slice(1);
+ }catch{log("La ubicación LSP no es un archivo local.","hint-line");return;}
  const tab=activeTab(),normalizePath=value=>String(value||"").split(String.fromCharCode(92)).join("/").toLowerCase();
  const normalizedTarget=normalizePath(targetPath),normalizedActive=normalizePath(tab?.path);
  let normalizedRoot=normalizePath(projectPath);while(normalizedRoot.endsWith("/"))normalizedRoot=normalizedRoot.slice(0,-1);
  if(!projectPath||!tab?.path||!(normalizedTarget===normalizedActive||normalizedTarget.startsWith(normalizedRoot+"/"))){log("La definición está fuera del proyecto abierto: "+targetPath,"hint-line");return;}
- if(normalizedTarget!==normalizedActive){ if(part.range?.start){const offset=offsetAt(part.range.start);editor.focus();editor.setSelectionRange(offset,offset);}
+ if(normalizedTarget!==normalizedActive){
+  try{const file=await window.memingoIDE.openProjectFile(targetPath);if(file)addTab(file);}
+  catch(error){log("No se pudo abrir el destino: "+error.message,"stderr");return;}
+ }
+ if(part.range?.start){const offset=offsetAt(part.range.start);editor.focus();editor.setSelectionRange(offset,offset);}
 }
 async function lspHover(){if(!activeLspKey)return log("No hay un servidor LSP activo.","hint-line");try{const result=await window.memingoIDE.requestLspHover({position:editorPosition()});log(result?.contents||"Sin información para este símbolo.", "hint-line");}catch(error){log("Hover: "+error.message,"stderr");}}
 async function lspDefinition(){if(!activeLspKey)return log("No hay un servidor LSP activo.","hint-line");try{const result=await window.memingoIDE.requestLspDefinition({position:editorPosition()}),location=Array.isArray(result)?result[0]:result;if(!location)return log("No se encontró una definición.","hint-line");await navigateLspLocation(location);}catch(error){log("Definición: "+error.message,"stderr");}}
