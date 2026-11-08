@@ -309,6 +309,7 @@ async function streamAgentEvents(port, signal) {
   }
 }
 ipcMain.handle("agents:list", async () => ({ engines: listAgentEngines(), profiles: listAgentProfiles(), adapters: listProtocolAdapters() }));
+ipcMain.handle("languages:list", async () => listLanguages());
 
 ipcMain.handle("agents:connect", async (_event, payload = {}) => {
   const engine = typeof payload.engine === "string" ? payload.engine : "opencode";
