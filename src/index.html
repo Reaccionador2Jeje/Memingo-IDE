@@ -38,6 +38,9 @@
       <section class="git-panel">
         <div class="git-panel-title">CONTROL DE VERSIONES</div>
         <div class="git-repo" id="gitRepoLabel">Abre un proyecto para empezar</div>
+        <div class="source-control-head"><strong>CAMBIOS</strong><button id="refreshGitChanges" class="outline">Actualizar</button></div>
+        <div id="gitChanges" class="git-changes"><div class="git-empty">Abre un proyecto Git para ver sus cambios.</div></div>
+        <pre id="gitDiffView" class="git-diff-view" aria-label="Diferencias del archivo">Selecciona un archivo para ver sus diferencias.</pre>
         <div class="git-actions">
           <button class="outline" data-git="status">Estado</button>
           <button class="outline" data-git="diff">Cambios</button>
