@@ -68,6 +68,23 @@
         <div id="gitConflicts" class="git-conflicts"><div class="git-empty">No hay conflictos cargados.</div></div>
         <div id="gitConflictEditor" class="git-conflict-editor" hidden><div id="gitConflictPath" class="git-conflict-path"></div><textarea id="gitConflictContent" spellcheck="false" aria-label="Contenido para resolver conflicto"></textarea><div class="git-conflict-actions"><button id="saveGitConflict" class="outline">Guardar resolución</button><button id="stageGitConflict" class="outline">Marcar resuelto</button></div></div>
       </section>
+      <section class="agents-panel">
+        <div class="agents-panel-head"><strong>AGENTES DE CÓDIGO OPEN SOURCE</strong><span class="agents-license">MIT</span></div>
+        <p class="agents-intro">Describe tu idea en español. El agente te ayuda a planificar, construir o revisar el proyecto.</p>
+        <div class="agents-engine-row"><span>Motor</span><strong>OpenCode</strong><button id="connectAgent" class="outline">Conectar</button></div>
+        <div id="agentStatus" class="agent-status">Desconectado · Requiere OpenCode instalado</div>
+        <label class="agent-label" for="agentProfile">¿Qué necesitas?</label>
+        <select id="agentProfile" class="agent-profile">
+          <option value="plan">Planificador · explica antes de crear</option>
+          <option value="build">Constructor · crea y modifica archivos</option>
+          <option value="review">Revisor · encuentra mejoras</option>
+        </select>
+        <textarea id="agentPrompt" class="agent-prompt" rows="4" maxlength="8000" placeholder="Ejemplo: Quiero crear un juego de plataformas con un personaje que salta y recoge monedas. Explícame cómo empezar…"></textarea>
+        <div class="agent-actions"><button id="sendAgentPrompt" class="agent-send" disabled>Enviar petición</button><button id="stopAgent" class="outline" disabled>Detener</button></div>
+        <div id="agentPermission" class="agent-permission" hidden></div>
+        <div id="agentConversation" class="agent-conversation" aria-live="polite"><div class="agent-empty">Tu conversación con el agente aparecerá aquí.</div></div>
+        <div class="agent-footnote">Tus archivos solo se modifican cuando usas el perfil Constructor y apruebas las acciones solicitadas. Git push está bloqueado.</div>
+      </section>
       <div class="help-card"><span class="help-dot"></span><strong>Memingo Runtime</strong><p>Para ejecutar código necesitas tener Memingo instalado y disponible en PATH.</p><a href="https://github.com/Reaccionador2Jeje/Memingo">Ver runtime ↗</a></div>
     </aside>
   </main>
