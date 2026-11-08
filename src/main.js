@@ -84,7 +84,7 @@ async function ensureAgentPermissions(root) {
     grep: "allow",
     list: "allow",
     edit: "ask",
-    bash: { "*": "ask", "git push *": "deny" },
+    bash: { "*": "ask", "git push": "deny", "git push *": "deny" },
     external_directory: "deny",
     webfetch: "ask",
     websearch: "ask",
@@ -405,7 +405,7 @@ ipcMain.handle("project:open", async () => {
   const result = await dialog.showOpenDialog(mainWindow, { properties: ["openDirectory"] });
   if (result.canceled || !result.filePaths[0]) return null;
   if (agentEventAbort) { agentEventAbort.abort(); agentEventAbort = null; }
-  if (agentProcess) { const previousAgent = agentProcess; agentProcess = null; previousAgent.kill(); }
+  if (agentProcess) { const previousAgent = agentProcess; agentProcess = null; previousAgent.kill(); sendAgentEvent({ type: "agent.disconnected", message: "Se cambió de proyecto. Vuelve a conectar el agente." }); }
   agentPort = null; agentSessionId = null;
   projectRoot = path.resolve(result.filePaths[0]);
   return { path: projectRoot, name: path.basename(projectRoot), manifest: await readProjectManifest(projectRoot), tree: await scanProjectTree(projectRoot) };
