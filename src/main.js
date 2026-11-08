@@ -459,7 +459,7 @@ ipcMain.handle("file:open", async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ["openFile"],
     filters: [
-      { name: "Memingo", extensions: ["mgo", "mgoa"] },
+      { name: "Código y formatos compatibles", extensions: getSupportedExtensions() },
       { name: "Todos los archivos", extensions: ["*"] }
     ]
   });
