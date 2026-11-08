@@ -569,7 +569,7 @@ function scheduleLspCompletion(){if(!activeLspKey||currentLanguageInfo().id==="m
 function locationParts(location){const uri=location?.targetUri||location?.uri,range=location?.targetSelectionRange||location?.targetRange||location?.range;return uri?{uri,range}:null;}
 async function navigateLspLocation(location){
  const part=locationParts(location);if(!part)return;let targetPath="";
- try{const url=new URL(part.uri);if(url.protocol!=="file:")throw new Error();targetPath=decodeURIComponent(url.pathname);if(/^\\/[A-Za-z]:\\//.test(targetPath))targetPath=targetPath.slice(1);}catch{log("La ubicación LSP no es un archivo local.","hint-line");return;}
+ try{const url=new URL(part.uri);if(url.protocol!=="file:")throw new Error();targetPath=decodeURIComponent(url.pathname);if(targetPath.startsWith("/") && /^[A-Za-z]:\\//.test(targetPath.slice(1)))targetPath=targetPath.slice(1);}catch{log("La ubicación LSP no es un archivo local.","hint-line");return;}
  const tab=activeTab();if(!projectPath||!tab?.path||!(targetPath===tab.path||targetPath.startsWith(projectPath.replace(/[\\/]+$/,"")+"/")||targetPath.startsWith(projectPath.replace(/[\\/]+$/,"")+"\\"))){log("La definición está fuera del proyecto abierto: "+targetPath,"hint-line");return;}
  if(targetPath!==tab.path){try{const file=await window.memingoIDE.openProjectFile(targetPath);if(file)addTab(file);}catch(error){log("No se pudo abrir el destino: "+error.message,"stderr");return;}}
  if(part.range?.start){const offset=offsetAt(part.range.start);editor.focus();editor.setSelectionRange(offset,offset);}
