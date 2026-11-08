@@ -53,7 +53,13 @@ Generated files are written to `release/`.
 
 GitHub Actions also builds the Windows NSIS installer and Linux AppImage when you manually run **Memingo IDE packages** or push a version tag such as `v0.2.0`. Download the resulting ZIP artifacts from the workflow run (available for 14 days).
 
-**Android:** this Electron desktop application cannot be packaged directly as an APK. An Android edition requires a separate mobile adaptation of the renderer and replacement of Electron-only file, process, Git, terminal and LSP integrations with Android-compatible services. No Android APK is published by this workflow yet.
+**Android:** Memingo IDE includes a separate mobile-first editor in `mobile/`, packaged with Capacitor. The Android workspace now supports multiple file tabs, per-file local drafts, import/export, language selection, search, replace, basic delimiter diagnostics, automatic indentation and keyboard shortcuts. It remains a lightweight mobile edition: it does not yet include the desktop runtime process, full project explorer, Git/GitHub, agents, terminal or LSP integrations.
+
+### AtDev Accounts integration
+
+The planned shared identity service is `https://atdev-accounts.onrender.com`. The mobile client does not send passwords or tokens to guessed routes. Authentication and account sync will be enabled after the service's documented API contract (OpenAPI/schema, endpoint paths, request/response fields, token refresh and CORS policy) is available. The account service URL alone is not enough to implement a safe login flow.
+
+ An Android edition requires a separate mobile adaptation of the renderer and replacement of Electron-only file, process, Git, terminal and LSP integrations with Android-compatible services. No Android APK is published by this workflow yet.
 
 ## How code execution works
 
