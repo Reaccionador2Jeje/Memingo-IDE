@@ -838,6 +838,8 @@ const agentConversation = document.getElementById("agentConversation");
 const agentPermission = document.getElementById("agentPermission");
 const agentTextParts = new Map();
 function addAgentMessage(role, text) {
+  const empty = agentConversation.querySelector(".agent-empty");
+  if (empty) empty.remove();
   const item = document.createElement("div");
   item.className = "agent-message " + role;
   const heading = document.createElement("strong");
@@ -925,11 +927,19 @@ function handleAgentEvent(event) {
   }
   if (type === "message.part.updated" || type === "message.part.delta") {
     const part = props.part || props;
-    if (part.type === "text" && typeof part.text === "string") {
+    if (part.type === "text") {
       const key = String(part.id || props.messageID || "answer");
-      agentTextParts.set(key, part.text);
+      if (type === "message.part.delta") {
+        const delta = typeof props.delta === "string" ? props.delta : (typeof part.delta === "string" ? part.delta : "");
+        if (delta) agentTextParts.set(key, (agentTextParts.get(key) || "") + delta);
+      } else if (typeof part.text === "string") agentTextParts.set(key, part.text);
       renderAgentText();
     }
+    return;
+  }
+  if (type === "session.idle" || type === "session.status" && props.status?.type === "idle") {
+    document.getElementById("agentStatus").textContent = "Conectado · Listo";
+    document.getElementById("sendAgentPrompt").disabled = !agentConnected;
     return;
   }
   if (type === "session.error" || type === "message.error") {
@@ -972,6 +982,7 @@ async function sendAgentPrompt() {
   try {
     await window.memingoIDE.sendAgentPrompt({prompt,profile});
     document.getElementById("agentStatus").textContent = "Trabajando…";
+    button.disabled = false;
   } catch (error) {
     addAgentMessage("system", error.message);
     button.disabled = false;
