@@ -408,9 +408,10 @@ ipcMain.handle("agents:send", async (_event, payload = {}) => {
 });
 ipcMain.handle("agents:permission", async (_event, payload = {}) => {
   if (payload.engine === "goose") {
-    const id = Number(payload.id);
+    const id = payload.id;
+    const validId = (typeof id === "number" && Number.isSafeInteger(id)) || (typeof id === "string" && id.length > 0 && id.length <= 160);
     const optionId = typeof payload.optionId === "string" ? payload.optionId : "";
-    if (!Number.isSafeInteger(id) || !goosePermissionRequests.has(id) || (!payload.cancelled && !/^[A-Za-z0-9_.:-]{1,160}$/.test(optionId))) throw new Error("Solicitud de permiso Goose no válida.");
+    if (!validId || !goosePermissionRequests.has(id) || (!payload.cancelled && !/^[A-Za-z0-9_.:-]{1,160}$/.test(optionId))) throw new Error("Solicitud de permiso Goose no válida.");
     gooseSend({ jsonrpc: "2.0", id, result: { outcome: payload.cancelled ? { outcome: "cancelled" } : { outcome: "selected", optionId } } });
     goosePermissionRequests.delete(id);
     return { answered: true };
