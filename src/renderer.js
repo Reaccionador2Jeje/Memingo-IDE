@@ -61,14 +61,14 @@ function updateSyntax() {
   let html = "";
   let last = 0;
   if (language.id === "memingo") {
-    const pattern = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|#[^\\n]*|\\b(?:vibe|ritual|drop|when|nah|grind|spill|borrow)\\b|\\b(?:based|cringe|ghost|whole|caption|party)\\b|\\b(?:headcount|whatkind|json_parse|json_stringify|env|range|keys|push|append|set_value|delete_key|random|random_int|http_get|http_post|trim|join|split|sort|map|filter|reduce|sum|min|max|clamp|parse_int|parse_float|repeat|lines|unique|meme_case|shuffle|uuid|now|sleep|read_file|write_file|file_exists|list_files)\\b|\\b\\d+(?:\\.\\d+)?\\b)/g;
+    const pattern = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|#[^\n]*|\b(?:vibe|ritual|drop|when|nah|grind|spill|borrow)\b|\b(?:based|cringe|ghost|whole|caption|party)\b|\b(?:headcount|whatkind|json_parse|json_stringify|env|range|keys|push|append|set_value|delete_key|random|random_int|http_get|http_post|trim|join|split|sort|map|filter|reduce|sum|min|max|clamp|parse_int|parse_float|repeat|lines|unique|meme_case|shuffle|uuid|now|sleep|read_file|write_file|file_exists|list_files)\b|\b\d+(?:\.\d+)?\b)/g;
     for (const match of source.matchAll(pattern)) {
       html += escapeHTML(source.slice(last, match.index));
       const token = match[0];
       let kind = "number";
       if (token.startsWith("#")) kind = "comment";
       else if (token.startsWith('"') || token.startsWith("'")) kind = "string";
-      else if (/^\\d/.test(token)) kind = "number";
+      else if (/^\d/.test(token)) kind = "number";
       else if (/^(based|cringe|ghost|whole|caption|party)$/.test(token)) kind = "value";
       else if (/^(headcount|whatkind|json_parse|json_stringify|env|range|keys|push|append|set_value|delete_key|random|random_int|http_get|http_post|trim|join|split|sort|map|filter|reduce|sum|min|max|clamp|parse_int|parse_float|repeat|lines|unique|meme_case|shuffle|uuid|now|sleep|read_file|write_file|file_exists|list_files)$/.test(token)) kind = "builtin";
       else kind = "keyword";
@@ -76,27 +76,27 @@ function updateSyntax() {
       last = match.index + token.length;
     }
   } else {
-    const keywords = new Set(String(language.keywords || "").split(/\\s+/).filter(Boolean));
-    const tokenPattern = /\\/\\*[\\s\\S]*?\\*\\/|\\/\\/[^\\n]*|<!--[\\s\\S]*?-->|#[^\\n]*|--[^\\n]*|"(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*'|`(?:\\\\.|[^`\\\\])*`|<\\/?[A-Za-z][^>]*>|\\b\\d+(?:\\.\\d+)?\\b|\\b[A-Za-z_$][\\w$]*\\b/g;
+    const keywords = new Set(String(language.keywords || "").split(/\s+/).filter(Boolean));
+    const tokenPattern = /\/\*[\s\S]*?\*\/|\/\/[^\n]*|<!--[\s\S]*?-->|#[^\n]*|--[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|<\/?[A-Za-z][^>]*>|\b\d+(?:\.\d+)?\b|\b[A-Za-z_$][\w$]*\b/g;
     for (const match of source.matchAll(tokenPattern)) {
       html += escapeHTML(source.slice(last, match.index));
       const token = match[0];
       let kind = "plain";
       if (token.startsWith("//") || token.startsWith("#") || token.startsWith("/*") || token.startsWith("<!--") || token.startsWith("--")) kind = "comment";
-      else if (token.startsWith('"') || token.startsWith("'") || token.startsWith("`")) kind = "string";
-      else if (/^<\\/?[A-Za-z]/.test(token)) kind = "tag";
-      else if (/^\\d/.test(token)) kind = "number";
+      else if (token.startsWith('"') || token.startsWith("'")) kind = "string";
+      else if (/^<\/?[A-Za-z]/.test(token)) kind = "tag";
+      else if (/^\d/.test(token)) kind = "number";
       else if (/^(true|false|null|undefined|none|nil|NaN|Infinity|True|False|None)$/.test(token)) kind = "value";
       else if (keywords.has(token)) kind = "keyword";
       else if (/^[A-Z][A-Z0-9_]*$/.test(token)) kind = "value";
-      else if (/^[A-Za-z_$][\\w$]*$/.test(token) && /^\\s*\\(/.test(source.slice(match.index + token.length))) kind = "builtin";
+      else if (/^[A-Za-z_$][\w$]*$/.test(token) && /^\s*\(/.test(source.slice(match.index + token.length))) kind = "builtin";
       else if (/^[A-Z]/.test(token)) kind = "type";
       html += kind === "plain" ? escapeHTML(token) : '<span class="tok-' + kind + '">' + escapeHTML(token) + "</span>";
       last = match.index + token.length;
     }
   }
   html += escapeHTML(source.slice(last));
-  syntaxLayer.innerHTML = html + "\\n";
+  syntaxLayer.innerHTML = html + "\n";
 }
 async function loadLanguageRegistry() {
   try {
