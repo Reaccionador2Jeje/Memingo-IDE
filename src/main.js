@@ -425,7 +425,7 @@ ipcMain.handle("vcs:commit-detail", async (_event, payload = {}) => {
   const detail = await runGitProcess(root, "git", ["show", "--format=fuller", "--stat", "--no-renames", "--no-color", hash]);
   if (detail.code !== 0) return detail;
   const names = await runGitProcess(root, "git", ["diff-tree", "--no-commit-id", "--name-only", "-r", hash]);
-  return { ...detail, files: names.code === 0 ? names.stdout.split(/\\r?\\n/).filter(Boolean).slice(0, 300) : [] };
+  return { ...detail, files: names.code === 0 ? names.stdout.split(/\r?\n/).filter(Boolean).slice(0, 300) : [] };
 });
 
 ipcMain.handle("vcs:file", async (_event, payload = {}) => {
