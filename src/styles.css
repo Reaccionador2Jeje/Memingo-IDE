@@ -107,3 +107,20 @@ textarea::selection{background:rgba(126,150,210,.35);-webkit-text-fill-color:tra
 .git-detail-files-label{padding:7px 0 4px;color:#9298a8;font-size:9px;font-weight:800;letter-spacing:.7px}
 .git-history-file{display:block;width:100%;padding:5px 4px;text-align:left;background:transparent;color:#aebbd3;font:9px "JetBrains Mono",Consolas,monospace;overflow-wrap:anywhere}
 .git-history-file:hover{color:#a6e36b;background:#242630}
+
+/* Gestor visual de ramas y conflictos */
+.git-current-branch{padding:5px 7px;margin-bottom:5px;border-radius:5px;background:#20232b;color:#a6e36b;font:10px "JetBrains Mono",Consolas,monospace;overflow-wrap:anywhere}
+.git-branches,.git-conflicts{max-height:115px;overflow:auto;border:1px solid #2d303b;border-radius:6px;background:#12141b}
+.git-branch-row{display:flex;align-items:center;justify-content:space-between;gap:5px;padding:5px 6px;border-bottom:1px solid #252833;color:#cbd0dc;font:10px "JetBrains Mono",Consolas,monospace}
+.git-branch-row span{min-width:0;overflow-wrap:anywhere}
+.git-branch-row button:disabled{opacity:.55;cursor:default}
+.git-branch-create,.git-branch-merge{display:flex;gap:5px;margin-top:6px}
+.git-branch-create input,.git-branch-merge select{min-width:0;flex:1;width:0;padding:6px;border:1px solid #383b48;border-radius:5px;background:#20222b;color:#e4e6ee;font-size:10px}
+.git-branch-create button,.git-branch-merge button{padding:5px 7px}
+.git-conflict-editor[hidden]{display:none}
+.git-conflict-editor{margin-top:7px;padding:7px;border:1px solid #72534a;border-radius:6px;background:#201b1c}
+.git-conflict-path{margin-bottom:6px;color:#ffbd8a;font:10px "JetBrains Mono",Consolas,monospace;overflow-wrap:anywhere}
+.git-conflict-editor textarea{display:block;width:100%;height:140px;min-height:100px;resize:vertical;padding:7px;border:1px solid #414553;border-radius:5px;background:#111319;color:#e1e5ee;font:10px/1.5 "JetBrains Mono",Consolas,monospace;white-space:pre;overflow:auto}
+.git-conflict-actions{display:flex;gap:5px;margin-top:6px}
+.git-conflict-actions button{flex:1;padding:6px 4px;font-size:9px}
+.git-abort-merge{width:calc(100% - 10px);margin:5px}
