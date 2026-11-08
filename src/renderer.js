@@ -435,6 +435,47 @@ async function formatFile() {
     }
   } catch (error) { log(error.message, "stderr"); }
 }
+
+const terminalForm = document.getElementById("terminalForm");
+const terminalInput = document.getElementById("terminalInput");
+let terminalBusy = false;
+async function executeTerminalCommand(rawCommand) {
+  const command = rawCommand.trim();
+  if (!command || terminalBusy) return;
+  log("› " + command, "hint-line");
+  terminalInput.value = "";
+  if (command === "clear") { logEntries = []; renderOutput(); return; }
+  if (command === "help" || command === "pwd" || command === "ls" || /^memingo (run|check|fmt)$/.test(command)) {
+    terminalBusy = true;
+    terminalInput.disabled = true;
+    try {
+      const tab = activeTab();
+      if (/^memingo (run|check|fmt)$/.test(command) && tab && (!tab.path || editor.value !== tab.savedContent)) {
+        const saved = await saveFile();
+        if (!saved) return;
+      }
+      const result = await window.memingoIDE.terminalExecute({command, filePath: activeTab()?.path || ""});
+      if (result.stdout) log(result.stdout, "stdout");
+      if (result.stderr) log(result.stderr, "stderr");
+      if (result.error) log(result.error, "stderr");
+      log("Comando finalizado (código " + result.code + ").", result.code === 0 ? "hint-line" : "stderr");
+      if (command === "memingo fmt" && result.code === 0 && typeof result.content === "string") {
+        const current = activeTab();
+        if (current) {
+          editor.value = result.content; current.content = result.content; current.savedContent = result.content; current.dirty = false;
+          updateLines(); updateSyntax(); renderTabs();
+        }
+      }
+    } catch (error) { log(error.message, "stderr"); }
+    finally { terminalBusy = false; terminalInput.disabled = false; terminalInput.focus(); }
+    return;
+  }
+  log("Comando no reconocido o no permitido. Escribe help.", "stderr");
+}
+terminalForm.addEventListener("submit", event => {
+  event.preventDefault();
+  executeTerminalCommand(terminalInput.value);
+});
 document.getElementById("projectBtn").addEventListener("click",openProject);
 document.getElementById("sideProject").addEventListener("click",openProject);
 document.getElementById("newBtn").addEventListener("click",newFile);
