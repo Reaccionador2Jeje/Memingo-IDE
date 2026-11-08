@@ -162,3 +162,12 @@ Instala [OpenCode](https://github.com/anomalyco/opencode) desde su [documentaci�
 OpenCode se inicia como servidor local autenticado en `127.0.0.1` y usa `.opencode/opencode.json` con permisos conservadores. Goose se inicia como proceso local `goose acp` mediante el protocolo ACP, en modo `approve`, y usa el directorio del proyecto como carpeta de trabajo. Las solicitudes ACP muestran las opciones de permiso de una sola vez; Memingo no ofrece aprobaciones permanentes. Goose se ejecuta con los permisos del usuario del sistema y ACP no es un sandbox: el directorio de trabajo por sí solo no impide que una herramienta acceda a otras rutas. Revisa siempre las rutas, comandos y detalles de cada acción antes de aprobar. Los perfiles son instrucciones para el modelo, no límites de seguridad por sí mismos.
 
 Las aprobaciones se muestran en el panel del agente. **Permitir una vez** no guarda una autorización permanente; **Rechazar** niega la acción. El perfil Constructor puede modificar el proyecto, así que revisa cada solicitud. No apruebes comandos o accesos que no entiendas. Al finalizar una tarea, el explorador y los archivos abiertos sin cambios pendientes se actualizan. OpenCode usa licencia MIT y Goose Apache-2.0. Las licencias y condiciones del modelo conectado son independientes; algunos proveedores requieren cuenta o pueden generar costes. Puedes configurar modelos locales compatibles en el motor correspondiente; Memingo IDE no descarga modelos automáticamente.
+
+## Integración continua
+
+GitHub Actions valida automáticamente cada cambio enviado a `main` y cada pull request dirigido a esa rama. El flujo `.github/workflows/ci.yml` instala las dependencias con Node.js 22 y ejecuta:
+
+- `npm run check`: comprueba la sintaxis de los archivos JavaScript del IDE y sus pruebas.
+- `npm test`: ejecuta las pruebas automatizadas del registro de motores y perfiles de agentes.
+
+También puedes iniciar la validación manualmente desde la pestaña **Actions** de GitHub mediante `Memingo IDE CI`.
