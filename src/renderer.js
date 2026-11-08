@@ -571,7 +571,9 @@ function locationParts(location){const uri=location?.targetUri||location?.uri,ra
 async function navigateLspLocation(location){
  const part=locationParts(location);if(!part)return;let targetPath="";
  try{const url=new URL(part.uri);if(url.protocol!=="file:")throw new Error();targetPath=decodeURIComponent(url.pathname);if(targetPath.startsWith("/") && targetPath.charAt(2)===":")targetPath=targetPath.slice(1);}catch{log("La ubicación LSP no es un archivo local.","hint-line");return;}
- const tab=activeTab(),normalizedTarget=targetPath.replace(/\\\\/g,"/").toLowerCase(),normalizedRoot=String(projectPath||"").replace(/\\\\/g,"/").replace(/\\/+$/,"").toLowerCase(),normalizedActive=String(tab?.path||"").replace(/\\\\/g,"/").toLowerCase();
+ const tab=activeTab(),normalizePath=value=>String(value||"").split(String.fromCharCode(92)).join("/").toLowerCase();
+ const normalizedTarget=normalizePath(targetPath),normalizedActive=normalizePath(tab?.path);
+ let normalizedRoot=normalizePath(projectPath);while(normalizedRoot.endsWith("/"))normalizedRoot=normalizedRoot.slice(0,-1);
  if(!projectPath||!tab?.path||!(normalizedTarget===normalizedActive||normalizedTarget.startsWith(normalizedRoot+"/"))){log("La definición está fuera del proyecto abierto: "+targetPath,"hint-line");return;}
  if(normalizedTarget!==normalizedActive){ if(part.range?.start){const offset=offsetAt(part.range.start);editor.focus();editor.setSelectionRange(offset,offset);}
 }
