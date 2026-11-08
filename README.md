@@ -5,12 +5,12 @@
 ## Current features
 
 - Dark desktop workspace.
-- Open a project folder and browse nested `.mgo` / `.mgoa` files in the explorer.
+- Open a project folder and browse nested Memingo files and common text/source formats (JavaScript, TypeScript, HTML, CSS, Python, JSON, Markdown, etc.).
 - Basic Memingo syntax highlighting for comments, strings, keywords, values and numbers.
 - Multiple open files with independent tabs and unsaved-change indicators.
 - Keyword and built-in function suggestions while typing (`Ctrl + Space` opens suggestions manually).
 - Basic editor diagnostics for unmatched brackets and unclosed strings.
-- Open and save `.mgo` and `.mgoa` source files.
+- Open and save `.mgo`, `.mgoa` and supported text/source files from the project explorer.
 - Create a new Memingo source file from a starter template.
 - Line numbers, tab indentation, synchronized highlighting and unsaved-change indicator.
 - Run the current file through the official Memingo CLI.
@@ -133,7 +133,7 @@ El panel muestra hasta 30 commits recientes con hash corto, autor, fecha y mensa
 
 ### Agentes de programación de código abierto
 
-Memingo IDE incluye un panel para trabajar con **OpenCode**, un agente de programación de código abierto (MIT), con tres perfiles pensados para principiantes:
+Memingo IDE incluye un panel que integra el motor **OpenCode** (MIT) con tres perfiles de trabajo pensados para principiantes. Son perfiles del mismo motor, no tres programas independientes:
 
 - **Planificador:** analiza la idea y prepara instrucciones sin editar archivos.
 - **Constructor:** crea y modifica archivos; las acciones protegidas requieren aprobación.
@@ -145,8 +145,8 @@ Memingo IDE incluye un panel para trabajar con **OpenCode**, un agente de progra
 - Un proveedor/modelo configurado en OpenCode. Puede ser un servicio remoto o un modelo local compatible; Memingo IDE no incluye modelos ni solicita claves API.
 - Abrir una carpeta de proyecto antes de conectar.
 
-Instala OpenCode siguiendo su documentación oficial: https://opencode.ai/docs/
+Instala OpenCode siguiendo su [repositorio oficial](https://github.com/anomalyco/opencode) y su [documentación](https://opencode.ai/docs/).
 
 Al conectar, Memingo IDE inicia el servidor de OpenCode solo en `127.0.0.1` y crea/actualiza `.opencode/opencode.json` en el proyecto con permisos conservadores: lectura normal permitida, archivos de entorno protegidos, modificaciones y comandos requieren aprobación, acceso fuera del proyecto denegado y `git push` bloqueado. Si ya existe una configuración JSON válida, conserva las demás opciones y ajusta las reglas de permisos; si el archivo usa JSONC o no se puede interpretar, la conexión se detiene para evitar sobrescribirlo.
 
-Las aprobaciones se muestran en el panel del agente. **Permitir una vez** no guarda una autorización permanente; **Rechazar** niega la acción. El perfil Constructor puede modificar el proyecto, así que revisa cada solicitud. El software del agente es abierto, pero el modelo conectado puede tener otra licencia o condiciones de uso.
+Las aprobaciones se muestran en el panel del agente. **Permitir una vez** no guarda una autorización permanente; **Rechazar** niega la acción. El perfil Constructor puede modificar el proyecto, así que revisa cada solicitud. Al finalizar una tarea, el explorador y los archivos abiertos sin cambios pendientes se actualizan. El motor OpenCode es MIT, pero el modelo conectado puede tener otra licencia, requerir una cuenta o generar costes. Puedes configurar un modelo local compatible desde OpenCode; Memingo IDE no descarga modelos automáticamente.
