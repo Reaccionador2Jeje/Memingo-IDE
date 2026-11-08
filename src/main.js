@@ -601,7 +601,7 @@ async function scanProjectTree(directory, depth = 0) {
     const fullPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
       items.push({ name: entry.name, path: fullPath, type: "directory", children: await scanProjectTree(fullPath, depth + 1) });
-    } else if (entry.isFile() && PROJECT_TEXT_FILE.test(entry.name)) {
+    } else if (entry.isFile() && isSupportedTextFile(entry.name)) {
       items.push({ name: entry.name, path: fullPath, type: "file" });
     }
   }
