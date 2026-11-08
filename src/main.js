@@ -107,12 +107,26 @@ async function agentApi(method, endpoint, body) {
   const raw = await response.text();
   let data = null;
   try { data = raw ? JSON.parse(raw) : null; } catch { data = raw; }
-  if (!response.ok) throw new Error(data?.message || data?.error || raw || ("OpenCode respondió HTTP " + response.status));
+  if (!response.ok) {
+    const error = new Error(data?.message || data?.error || raw || ("OpenCode respondió HTTP " + response.status));
+    error.status = response.status;
+    throw error;
+  }
   return data;
+}
+async function agentApiCompat(method, modernEndpoint, legacyEndpoint, body) {
+  try { return await agentApi(method, modernEndpoint, body); }
+  catch (error) {
+    if (error.status !== 404 && error.status !== 405) throw error;
+    return agentApi(method, legacyEndpoint, body);
+  }
 }
 async function streamAgentEvents(port, signal) {
   try {
-    const response = await fetch("http://127.0.0.1:" + port + "/global/event", { signal });
+    let response = await fetch("http://127.0.0.1:" + port + "/api/event", { signal });
+    if (response.status === 404 || response.status === 405) {
+      response = await fetch("http://127.0.0.1:" + port + "/global/event", { signal });
+    }
     if (!response.ok || !response.body) throw new Error("No se pudo abrir el flujo de eventos de OpenCode.");
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -190,7 +204,7 @@ ipcMain.handle("agents:send", async (_event, payload = {}) => {
   if (!prompt || prompt.length > 8000) throw new Error("Escribe una petición de entre 1 y 8000 caracteres.");
   if (!["plan", "build", "review"].includes(profile)) throw new Error("Perfil de agente no permitido.");
   if (!agentSessionId) {
-    const session = await agentApi("POST", "/session", { title: "Memingo IDE · " + profile });
+    const session = await agentApiCompat("POST", "/api/session", "/session", { title: "Memingo IDE · " + profile });
     if (!session?.id) throw new Error("OpenCode no devolvió una sesión válida.");
     agentSessionId = session.id;
   }
@@ -200,20 +214,25 @@ ipcMain.handle("agents:send", async (_event, payload = {}) => {
     review: "Revisa el proyecto buscando errores, riesgos y mejoras. No modifiques archivos ni ejecutes comandos. Explica los hallazgos en español y ordénalos por importancia."
   };
   const fullPrompt = profileInstructions[profile] + "\n\nPetición del usuario:\n" + prompt + "\n\nEl usuario puede ser principiante: evita jerga innecesaria, explica cada paso y pregunta si falta información importante.";
-  await agentApi("POST", "/session/" + encodeURIComponent(agentSessionId) + "/prompt_async", {
+  const sessionPath = "/session/" + encodeURIComponent(agentSessionId);
+  const promptBody = {
     agent: profile === "build" ? "build" : "plan",
     parts: [{ type: "text", text: fullPrompt }]
-  });
+  };
+  await agentApiCompat("POST", "/api" + sessionPath + "/prompt", sessionPath + "/prompt_async", promptBody);
   return { sent: true, sessionId: agentSessionId };
 });
 ipcMain.handle("agents:permission", async (_event, payload = {}) => {
   if (!agentSessionId || typeof payload.id !== "string" || !/^[A-Za-z0-9_-]{1,160}$/.test(payload.id)) throw new Error("Solicitud de permiso no válida.");
   const response = payload.response === "once" ? "once" : "reject";
-  return agentApi("POST", "/session/" + encodeURIComponent(agentSessionId) + "/permissions/" + encodeURIComponent(payload.id), { response, remember: false });
+  const sessionPath = "/session/" + encodeURIComponent(agentSessionId);
+  const requestId = encodeURIComponent(payload.id);
+  return agentApiCompat("POST", "/api" + sessionPath + "/permission/" + requestId + "/reply", sessionPath + "/permissions/" + requestId, { response, remember: false });
 });
 ipcMain.handle("agents:stop", async () => {
   if (!agentSessionId || !agentPort) return { stopped: false };
-  await agentApi("POST", "/session/" + encodeURIComponent(agentSessionId) + "/abort").catch(() => null);
+  const sessionPath = "/session/" + encodeURIComponent(agentSessionId);
+  await agentApiCompat("POST", "/api" + sessionPath + "/abort", sessionPath + "/abort").catch(() => null);
   return { stopped: true };
 });
 ipcMain.handle("agents:disconnect", async () => {
