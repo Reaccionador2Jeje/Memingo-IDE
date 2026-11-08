@@ -897,6 +897,7 @@ async function refreshAgentProjectFiles() {
     renderTabs(); updateLines(); updateSyntax();
     await refreshGitChanges();
     await refreshGitBranches();
+    await refreshGitHistory();
   } catch (error) { addAgentMessage("system", "No se pudo actualizar la vista del proyecto: " + error.message); }
 }
 function showAgentPermission(event) {
