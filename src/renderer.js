@@ -577,6 +577,74 @@ tabs.push({id:makeId(),path:null,name:"Sin título.mgo",content:editor.value,sav
 activeTabId=tabs[0].id;
 renderTabs();updateLines();updateSyntax();
 
+function renderGitChanges(raw) {
+  const container = document.getElementById("gitChanges");
+  const diffView = document.getElementById("gitDiffView");
+  container.replaceChildren();
+  const lines = raw.split(/\r?\n/).filter(Boolean);
+  if (!lines.length) {
+    const empty = document.createElement("div");
+    empty.className = "git-empty";
+    empty.textContent = "✓ No hay cambios pendientes.";
+    container.appendChild(empty);
+    diffView.textContent = "El proyecto está limpio.";
+    return;
+  }
+  for (const line of lines) {
+    if (line.length < 4) continue;
+    const code = line.slice(0, 2);
+    const filePath = line.slice(3).replace(/^"(.*)"$/, "$1");
+    const row = document.createElement("div");
+    row.className = "git-change-row";
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = "git-file-name";
+    open.textContent = filePath;
+    open.title = "Ver diferencias de " + filePath;
+    open.addEventListener("click", () => showGitDiff(filePath));
+    const state = document.createElement("span");
+    state.className = "git-file-state";
+    state.textContent = code;
+    const action = document.createElement("button");
+    action.type = "button";
+    action.className = "git-file-action";
+    const staged = code[0] !== " " && code !== "??";
+    action.textContent = staged ? "Quitar" : "Preparar";
+    action.title = staged ? "Quitar del staging" : "Preparar este archivo";
+    action.addEventListener("click", () => runGitFileAction(staged ? "unstageFile" : "stageFile", filePath));
+    row.append(state, open, action);
+    container.appendChild(row);
+  }
+}
+async function refreshGitChanges() {
+  if (!projectPath) return;
+  try {
+    const result = await window.memingoIDE.versionControl({action:"changes"});
+    if (result.code !== 0) {
+      document.getElementById("gitChanges").textContent = result.error || result.stderr || "No se pudo consultar Git.";
+      return;
+    }
+    renderGitChanges(result.stdout || "");
+    document.getElementById("gitRepoLabel").textContent = "Control de versiones · " + basename(projectPath);
+  } catch (error) { log(error.message, "stderr"); }
+}
+async function showGitDiff(filePath) {
+  const view = document.getElementById("gitDiffView");
+  view.textContent = "Cargando diferencias…";
+  try {
+    const result = await window.memingoIDE.versionControlFile({action:"fileDiff",path:filePath});
+    view.textContent = result.code === 0 ? (result.stdout || "No hay diferencias para este archivo.") : (result.error || result.stderr || "No se pudo generar el diff.");
+  } catch (error) { view.textContent = error.message; }
+}
+async function runGitFileAction(action, filePath) {
+  try {
+    const result = await window.memingoIDE.versionControlFile({action,path:filePath});
+    if (result.code !== 0) log(result.error || result.stderr || "La operación Git falló.", "stderr");
+    else log((action === "stageFile" ? "Preparado: " : "Quitado del staging: ") + filePath, "hint-line");
+    await refreshGitChanges();
+  } catch (error) { log(error.message, "stderr"); }
+}
+
 async function runGitAction(action) {
   if (!projectPath) { log("Abre un proyecto antes de usar Git.", "stderr"); return; }
   let message = "";
@@ -595,6 +663,7 @@ async function runGitAction(action) {
     if (result.code === 0) {
       log("Acción completada.", "hint-line");
       if (action === "commit") document.getElementById("gitCommitMessage").value = "";
+      if (["init","stage","commit","pull","push"].includes(action)) await refreshGitChanges();
       if (action === "status" && result.stdout) {
         const match = result.stdout.match(/## ([^\\s]+)/);
         if (match) document.getElementById("gitRepoLabel").textContent = "Rama: " + match[1];
@@ -603,6 +672,7 @@ async function runGitAction(action) {
   } catch (error) { log(error.message, "stderr"); }
   finally { runStatus.textContent = "● Inactivo"; }
 }
+document.getElementById("refreshGitChanges").addEventListener("click", refreshGitChanges);
 document.querySelectorAll("[data-git]").forEach(button => {
   button.addEventListener("click", () => runGitAction(button.dataset.git));
 });
