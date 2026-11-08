@@ -184,7 +184,7 @@ Memingo IDE incorpora un catálogo extensible de más de 80 lenguajes y familias
 - **Datos y configuración:** JSON, JSON5, JSONC, YAML, TOML, INI, XML, CSV, GraphQL, Protocol Buffers, SQL y Terraform.
 - **Documentación y otros:** Markdown, MDX, reStructuredText, LaTeX, Diff, logs y texto plano.
 
-El catálogo se centraliza en `src/languages/registry.js`. El explorador y el diálogo de apertura usan las extensiones registradas; el editor detecta el lenguaje de la pestaña activa, actualiza la etiqueta inferior y aplica resaltado de sintaxis general. Las sugerencias de autocompletado propias de Memingo solo aparecen en archivos `.mgo` y `.mgoa`.
+El catálogo se centraliza en `src/languages/registry.js`. El explorador y el diálogo de apertura usan las extensiones registradas; el editor detecta el lenguaje de la pestaña activa, muestra un selector manual para corregir extensiones ambiguas o elegir texto plano y aplica resaltado de sintaxis general. La selección manual se conserva mientras la pestaña permanezca abierta. Las sugerencias de autocompletado propias de Memingo solo aparecen en archivos `.mgo` y `.mgoa`.
 
 **Alcance importante:** esta etapa habilita reconocimiento, apertura, edición, guardado y resaltado básico para los formatos registrados. No equivale todavía a soporte completo de cada ecosistema: los servidores de lenguaje (LSP), autocompletado inteligente, depuradores, formateadores, compiladores y ejecución se deben integrar por lenguaje y requieren sus herramientas externas. Los botones Ejecutar, Comprobar, Formatear y Depurar siguen reservados al runtime Memingo; otros archivos no se enviarán accidentalmente a ese runtime.
 
