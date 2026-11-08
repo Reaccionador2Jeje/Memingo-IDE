@@ -870,6 +870,35 @@ function setAgentConnection(connected, status) {
   document.getElementById("sendAgentPrompt").disabled = !connected;
   document.getElementById("stopAgent").disabled = !connected;
 }
+async function refreshAgentProjectFiles() {
+  if (!projectPath) return;
+  try {
+    const project = await window.memingoIDE.refreshProject();
+    const tree = explorerRoot.querySelector(".file-tree");
+    if (tree) {
+      tree.replaceChildren();
+      renderTree(project.tree || [], tree);
+      if (!project.tree?.length) {
+        const empty = document.createElement("p");
+        empty.className = "tree-empty";
+        empty.textContent = "No se encontraron archivos de texto compatibles.";
+        tree.appendChild(empty);
+      }
+    }
+    for (const tab of tabs) {
+      if (!tab.path || tab.dirty) continue;
+      try {
+        const fresh = await window.memingoIDE.openProjectFile(tab.path);
+        tab.content = fresh.content;
+        tab.savedContent = fresh.content;
+        if (tab.id === activeTabId) editor.value = fresh.content;
+      } catch {}
+    }
+    renderTabs(); updateLines(); updateSyntax();
+    await refreshGitChanges();
+    await refreshGitBranches();
+  } catch (error) { addAgentMessage("system", "No se pudo actualizar la vista del proyecto: " + error.message); }
+}
 function showAgentPermission(event) {
   const props = event.properties || event;
   const request = props.permission || props.request || props;
@@ -947,6 +976,7 @@ function handleAgentEvent(event) {
   if (type === "session.idle" || type === "session.status" && props.status?.type === "idle") {
     document.getElementById("agentStatus").textContent = "Conectado · Listo";
     document.getElementById("sendAgentPrompt").disabled = !agentConnected;
+    refreshAgentProjectFiles();
     return;
   }
   if (type === "session.error" || type === "message.error") {
