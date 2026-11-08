@@ -313,7 +313,7 @@ ipcMain.handle("agents:connect", async (_event, payload = {}) => {
   const engineDefinition = getAgentEngine(engine);
   if (!engineDefinition) throw new Error("Motor de agente no registrado. Actualiza Memingo IDE.");
   activeAgentEngine = engine;
-  if (engine === "goose") return connectGoose();
+  if (engineDefinition.protocol === "acp") return connectGoose();
   if (!projectRoot) throw new Error("Abre una carpeta de proyecto antes de conectar un agente.");
   if (agentProcess && agentPort) return { connected: true, port: agentPort };
   const root = path.resolve(projectRoot);
@@ -407,7 +407,9 @@ ipcMain.handle("agents:send", async (_event, payload = {}) => {
   return { sent: true, sessionId: agentSessionId, engine };
 });
 ipcMain.handle("agents:permission", async (_event, payload = {}) => {
-  if (payload.engine === "goose") {
+  const permissionEngine = getAgentEngine(typeof payload.engine === "string" ? payload.engine : activeAgentEngine);
+  if (!permissionEngine) throw new Error("Motor de agente no registrado.");
+  if (permissionEngine.protocol === "acp") {
     const id = payload.id;
     const validId = (typeof id === "number" && Number.isSafeInteger(id)) || (typeof id === "string" && id.length > 0 && id.length <= 160);
     const optionId = typeof payload.optionId === "string" ? payload.optionId : "";
