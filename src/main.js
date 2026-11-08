@@ -37,7 +37,10 @@ app.on("window-all-closed", () => {
 ipcMain.handle("file:open", async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ["openFile"],
-    filters: [{ name: "Memingo", extensions: ["mgo", "mgoa", "txt"] }, { name: "All files", extensions: ["*"] }]
+    filters: [
+      { name: "Memingo", extensions: ["mgo", "mgoa"] },
+      { name: "Todos los archivos", extensions: ["*"] }
+    ]
   });
   if (result.canceled || !result.filePaths[0]) return null;
   const filePath = result.filePaths[0];
@@ -64,42 +67,56 @@ ipcMain.handle("file:new", async () => {
     filters: [{ name: "Memingo", extensions: ["mgo"] }]
   });
   if (result.canceled || !result.filePath) return null;
-  await fs.writeFile(result.filePath, "# Welcome to Memingo!\n\nvibe message = \"Hello, world!\"\nspill message\n", "utf8");
-  return { path: result.filePath, content: await fs.readFile(result.filePath, "utf8") };
+  const template = '# Welcome to Memingo!\n\nvibe message = "Hello, world!"\nspill message\n';
+  await fs.writeFile(result.filePath, template, "utf8");
+  return { path: result.filePath, content: template };
 });
 
 ipcMain.handle("memingo:run", async (event, filePath) => {
-  if (!filePath) throw new Error("Save your .mgo file before running it.");
-  if (activeProcess) throw new Error("A Memingo process is already running.");
-  const cwd = path.dirname(filePath);
-  return await new Promise((resolve, reject) => {
-    const child = spawn(process.platform === "win32" ? "memingo.exe" : "memingo", ["run", filePath], {
-      cwd,
+  if (typeof filePath !== "string" || !filePath.trim()) {
+    throw new Error("Guarda tu archivo .mgo antes de ejecutarlo.");
+  }
+  if (activeProcess) throw new Error("Ya hay un programa Memingo en ejecución.");
+  const absolutePath = path.resolve(filePath);
+  const stat = await fs.stat(absolutePath).catch(() => null);
+  if (!stat || !stat.isFile()) throw new Error("No se encontró el archivo que quieres ejecutar.");
+
+  return await new Promise(resolve => {
+    const child = spawn(process.platform === "win32" ? "memingo.exe" : "memingo", ["run", absolutePath], {
+      cwd: path.dirname(absolutePath),
       windowsHide: true,
       env: process.env
     });
     activeProcess = child;
     let settled = false;
-    const finish = (value) => {
+    const finish = result => {
       if (settled) return;
       settled = true;
-      activeProcess = null;
-      resolve(value);
+      if (activeProcess === child) activeProcess = null;
+      resolve(result);
     };
-    child.stdout.on("data", data => event.sender.send("memingo:output", { type: "stdout", text: data.toString() }));
-    child.stderr.on("data", data => event.sender.send("memingo:output", { type: "stderr", text: data.toString() }));
-    child.on("error", error => {
-      finish({ code: -1, error: error.code === "ENOENT" ? "Memingo no está instalado o el comando 'memingo' no está en PATH." : error.message });
+    child.stdout.on("data", data => {
+      if (!event.sender.isDestroyed()) event.sender.send("memingo:output", { type: "stdout", text: data.toString() });
     });
-    child.on("close", code => finish({ code }));
+    child.stderr.on("data", data => {
+      if (!event.sender.isDestroyed()) event.sender.send("memingo:output", { type: "stderr", text: data.toString() });
+    });
+    child.on("error", error => {
+      finish({
+        code: -1,
+        error: error.code === "ENOENT"
+          ? "No se encontró Memingo. Instala el runtime y comprueba que el comando 'memingo' esté en PATH."
+          : error.message
+      });
+    });
+    child.on("close", code => finish({ code: code ?? -1 }));
   });
 });
 
 ipcMain.handle("memingo:stop", () => {
-  if (activeProcess) {
-    activeProcess.kill();
-    activeProcess = null;
-    return true;
-  }
-  return false;
+  if (!activeProcess) return false;
+  const child = activeProcess;
+  activeProcess = null;
+  child.kill();
+  return true;
 });
