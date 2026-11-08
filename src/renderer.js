@@ -47,6 +47,7 @@ function escapeHTML(value) {
 function currentLanguageInfo() {
   const tab = activeTab();
   const override = tab ? languageOverrides.get(tab.id) : null;
+  if (override === "plaintext") return { id: "plaintext", name: "Texto plano", category: "plain", keywords: "" };
   if (override) {
     const selected = languageRegistry.find(language => language.id === override);
     if (selected) return selected;
