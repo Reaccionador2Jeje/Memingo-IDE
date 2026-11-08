@@ -208,4 +208,13 @@ go install golang.org/x/tools/gopls@latest
 
 Para Rust instala rust-analyzer y para C/C++ instala clangd desde sus sitios oficiales. Los ejecutables deben estar disponibles en PATH antes de iniciar Memingo IDE. Abre una carpeta de proyecto y después un archivo compatible: el IDE inicia el servidor correspondiente, envía el documento y recibe diagnósticos en tiempo real. Al cambiar de archivo se cambia el documento LSP activo; al cerrar el IDE se detiene el proceso.
 
-**Alcance de esta primera versión:** inicialización LSP, sincronización completa de documentos y diagnósticos publicados por el servidor. La interfaz muestra errores y advertencias recibidos. Autocompletado LSP, hover, navegación a definición, renombrado y acciones de código quedan para las siguientes etapas. Los servidores externos son software independiente y conservan sus propias licencias y requisitos. Memingo IDE no instala servidores automáticamente ni descarga modelos.
+**Funciones de inteligencia de código disponibles:**
+- **Autocompletado:** sugerencias del servidor con detalle y aplicación de inserciones; usa `Ctrl + Espacio`. También aparece una sugerencia automática al escribir en lenguajes con LSP.
+- **Hover / información:** consulta la documentación y tipo del símbolo con el botón **Info**.
+- **Ir a definición:** botón **Definir** o `F12`; abre el archivo de destino si pertenece al proyecto.
+- **Buscar referencias:** botón **Referencias** o `Mayús + F12`; muestra ubicaciones navegables.
+- **Renombrar símbolo:** botón **Renombrar** o `F2`; solicita el nuevo nombre y aplica las ediciones devueltas para el archivo activo.
+- **Acciones rápidas:** botón **Acciones** o `Ctrl + .`; muestra correcciones y acciones que ofrezca el servidor.
+- Los diagnósticos LSP se integran en el panel **PROBLEMAS** y se pueden seleccionar para saltar a la línea.
+
+Las ediciones de renombrado y acciones rápidas se aplican en el archivo activo en esta etapa; si el servidor propone modificaciones en otros archivos, la interfaz avisa y no las aplica automáticamente. Guarda el archivo con `Ctrl + S` después de aceptar una edición. El soporte concreto depende de las capacidades de cada servidor y del lenguaje. Los servidores externos son software independiente y conservan sus propias licencias y requisitos. Memingo IDE no instala servidores automáticamente ni descarga modelos.
