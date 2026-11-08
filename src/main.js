@@ -317,3 +317,61 @@ async function runMemingoDebug(event, filePath, breakpoints = []) {
   });
 }
 ipcMain.handle("memingo:debug", (event, payload) => runMemingoDebug(event, payload?.filePath, payload?.breakpoints));
+
+
+const GIT_ACTIONS = {
+  status: ["git", ["status", "--short", "--branch"]],
+  diff: ["git", ["diff", "--"]],
+  log: ["git", ["log", "-5", "--oneline", "--decorate"]],
+  branch: ["git", ["branch", "--show-current"]],
+  stage: ["git", ["add", "-A"]],
+  pull: ["git", ["pull", "--ff-only"]],
+  push: ["git", ["push"]],
+  githubAuth: ["gh", ["auth", "status"]],
+  githubRepo: ["gh", ["repo", "view", "--json", "nameWithOwner,url,visibility"]]
+};
+
+async function runVersionControl(action, message = "") {
+  if (!projectRoot) throw new Error("Abre un proyecto antes de usar Git.");
+  const root = path.resolve(projectRoot);
+  const stat = await fs.stat(root).catch(() => null);
+  if (!stat || !stat.isDirectory()) throw new Error("La carpeta del proyecto ya no está disponible.");
+  let executable, args;
+  if (action === "commit") {
+    const text = typeof message === "string" ? message.trim() : "";
+    if (!text || text.length > 200) throw new Error("Escribe un mensaje de commit (máximo 200 caracteres).");
+    executable = "git";
+    args = ["commit", "-m", text];
+  } else {
+    const command = GIT_ACTIONS[action];
+    if (!command) throw new Error("Acción de control de versiones no permitida.");
+    [executable, args] = command;
+  }
+  return await new Promise(resolve => {
+    const child = spawn(process.platform === "win32" && executable === "git" ? "git.exe" : executable, args, {
+      cwd: root, windowsHide: true, env: process.env, shell: false
+    });
+    let stdout = "", stderr = "", settled = false;
+    const append = (current, data) => (current + data.toString()).slice(-1024 * 1024);
+    const finish = result => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+    child.stdout.on("data", data => { stdout = append(stdout, data); });
+    child.stderr.on("data", data => { stderr = append(stderr, data); });
+    child.on("error", error => finish({
+      code: -1, stdout, stderr,
+      error: error.code === "ENOENT"
+        ? (executable === "gh" ? "GitHub CLI (gh) no está instalado. Instálalo para usar la autenticación y la vista del repositorio." : "Git no está instalado o no está disponible en PATH.")
+        : error.message
+    }));
+    child.on("close", code => finish({ code: code ?? -1, stdout, stderr }));
+  });
+}
+
+ipcMain.handle("vcs:execute", async (_event, payload = {}) => {
+  const action = typeof payload.action === "string" ? payload.action : "";
+  const message = typeof payload.message === "string" ? payload.message : "";
+  return runVersionControl(action, message);
+});
