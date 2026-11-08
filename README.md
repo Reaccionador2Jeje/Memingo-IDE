@@ -7,12 +7,15 @@
 - Dark desktop workspace.
 - Open a project folder and browse nested `.mgo` / `.mgoa` files in the explorer.
 - Basic Memingo syntax highlighting for comments, strings, keywords, values and numbers.
+- Multiple open files with independent tabs and unsaved-change indicators.
+- Keyword and built-in function suggestions while typing (`Ctrl + Space` opens suggestions manually).
+- Basic editor diagnostics for unmatched brackets and unclosed strings.
 - Open and save `.mgo` and `.mgoa` source files.
 - Create a new Memingo source file from a starter template.
 - Line numbers, tab indentation, synchronized highlighting and unsaved-change indicator.
 - Run the current file through the official Memingo CLI.
 - Integrated output console and process stop control.
-- Keyboard shortcuts: `Ctrl + S`, `Ctrl + O`, and `Ctrl + Enter`.
+- Keyboard shortcuts: `Ctrl + S`, `Ctrl + O`, `Ctrl + Enter`, and `Ctrl + Space`.
 
 ## Requirements
 
