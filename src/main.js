@@ -6,6 +6,7 @@ const net = require("node:net");
 const { randomBytes } = require("node:crypto");
 const { getAgentEngine, listAgentEngines, getAgentProfile, listAgentProfiles } = require("./agents/registry");
 const { assertAdapterOperation, listProtocolAdapters } = require("./agents/adapter-contract");
+const { listLanguages, getSupportedExtensions } = require("./languages/registry");
 
 let mainWindow;
 let activeProcess = null;
