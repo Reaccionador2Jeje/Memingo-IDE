@@ -6,7 +6,8 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "check": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js"
   },
   "devDependencies": {
     "electron": "^37.2.6",
@@ -15,9 +16,25 @@
   "build": {
     "appId": "dev.atdev.memingoide",
     "productName": "Memingo IDE",
-    "files": ["src/**/*", "package.json"],
-    "linux": { "target": ["AppImage", "deb"] },
-    "win": { "target": ["nsis"] },
-    "mac": { "target": ["dmg"] }
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ]
+    }
   }
 }
