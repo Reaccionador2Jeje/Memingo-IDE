@@ -832,6 +832,163 @@ async function stageGitConflict() {
   } catch (error) { log(error.message, "stderr"); }
 }
 
+
+let agentConnected = false;
+const agentConversation = document.getElementById("agentConversation");
+const agentPermission = document.getElementById("agentPermission");
+const agentTextParts = new Map();
+function addAgentMessage(role, text) {
+  const item = document.createElement("div");
+  item.className = "agent-message " + role;
+  const heading = document.createElement("strong");
+  heading.textContent = role === "user" ? "Tú" : role === "assistant" ? "Agente" : "Memingo IDE";
+  const body = document.createElement("p");
+  body.textContent = text;
+  item.append(heading, body);
+  agentConversation.appendChild(item);
+  agentConversation.scrollTop = agentConversation.scrollHeight;
+}
+function renderAgentText() {
+  const existing = agentConversation.querySelector(".agent-live-answer");
+  if (existing) existing.remove();
+  const text = [...agentTextParts.values()].join("");
+  if (!text) return;
+  const item = document.createElement("div");
+  item.className = "agent-message assistant agent-live-answer";
+  const heading = document.createElement("strong"); heading.textContent = "Agente";
+  const body = document.createElement("p"); body.textContent = text;
+  item.append(heading, body);
+  agentConversation.appendChild(item);
+  agentConversation.scrollTop = agentConversation.scrollHeight;
+}
+function setAgentConnection(connected, status) {
+  agentConnected = connected;
+  document.getElementById("agentStatus").textContent = status;
+  document.getElementById("connectAgent").textContent = connected ? "Desconectar" : "Conectar";
+  document.getElementById("sendAgentPrompt").disabled = !connected;
+  document.getElementById("stopAgent").disabled = !connected;
+}
+function showAgentPermission(event) {
+  const props = event.properties || event;
+  const request = props.permission || props.request || props;
+  const id = request.id || props.permissionID || props.id;
+  if (typeof id !== "string") return;
+  agentPermission.replaceChildren();
+  agentPermission.hidden = false;
+  const title = document.createElement("strong");
+  title.textContent = "El agente solicita permiso";
+  const detail = document.createElement("p");
+  detail.textContent = String(request.description || request.message || request.type || "Quiere realizar una acción en el proyecto. Revisa los detalles antes de aprobar.") + (request.patterns ? "\n" + JSON.stringify(request.patterns) : "");
+  const once = document.createElement("button");
+  once.type = "button"; once.className = "agent-approve"; once.textContent = "Permitir una vez";
+  once.addEventListener("click", async () => {
+    try {
+      await window.memingoIDE.answerAgentPermission({id,response:"once"});
+      agentPermission.hidden = true;
+      addAgentMessage("system", "Permiso aprobado una sola vez.");
+    } catch (error) { addAgentMessage("system", error.message); }
+  });
+  const reject = document.createElement("button");
+  reject.type = "button"; reject.className = "outline"; reject.textContent = "Rechazar";
+  reject.addEventListener("click", async () => {
+    try {
+      await window.memingoIDE.answerAgentPermission({id,response:"reject"});
+      agentPermission.hidden = true;
+      addAgentMessage("system", "Permiso rechazado.");
+    } catch (error) { addAgentMessage("system", error.message); }
+  });
+  const actions = document.createElement("div"); actions.className = "agent-permission-actions";
+  actions.append(once,reject);
+  agentPermission.append(title,detail,actions);
+}
+function handleAgentEvent(event) {
+  if (!event || typeof event !== "object") return;
+  const type = String(event.type || "");
+  const props = event.properties || event;
+  if (type === "agent.connected") {
+    setAgentConnection(true, "Conectado · Permisos protegidos");
+    addAgentMessage("system", event.message || "OpenCode conectado.");
+    return;
+  }
+  if (type === "agent.disconnected") {
+    setAgentConnection(false, "Desconectado");
+    return;
+  }
+  if (type === "agent.connection.error") {
+    setAgentConnection(false, "Error: " + (event.message || "no se pudo conectar"));
+    addAgentMessage("system", event.message || "Error de conexión.");
+    return;
+  }
+  if (type.includes("permission") && (type.includes("asked") || type.includes("updated"))) {
+    showAgentPermission(event);
+    return;
+  }
+  if (type === "message.part.updated" || type === "message.part.delta") {
+    const part = props.part || props;
+    if (part.type === "text" && typeof part.text === "string") {
+      const key = String(part.id || props.messageID || "answer");
+      agentTextParts.set(key, part.text);
+      renderAgentText();
+    }
+    return;
+  }
+  if (type === "session.error" || type === "message.error") {
+    addAgentMessage("system", props.error?.message || props.message || "El agente informó de un error.");
+  }
+}
+window.memingoIDE.onAgentEvent(handleAgentEvent);
+async function connectAgent() {
+  if (!projectPath) {
+    addAgentMessage("system", "Primero abre una carpeta de proyecto.");
+    return;
+  }
+  if (agentConnected) {
+    await window.memingoIDE.disconnectAgent();
+    setAgentConnection(false, "Desconectado");
+    return;
+  }
+  const button = document.getElementById("connectAgent");
+  button.disabled = true; button.textContent = "Conectando…";
+  document.getElementById("agentStatus").textContent = "Iniciando OpenCode…";
+  try {
+    await window.memingoIDE.connectAgent();
+    setAgentConnection(true, "Conectado · OpenCode");
+    addAgentMessage("system", "OpenCode está listo. Elige un perfil y describe lo que quieres crear.");
+  } catch (error) {
+    setAgentConnection(false, error.message);
+    addAgentMessage("system", error.message);
+  } finally { button.disabled = false; }
+}
+async function sendAgentPrompt() {
+  const input = document.getElementById("agentPrompt");
+  const prompt = input.value.trim();
+  if (!prompt || !agentConnected) return;
+  const profile = document.getElementById("agentProfile").value;
+  const button = document.getElementById("sendAgentPrompt");
+  button.disabled = true;
+  addAgentMessage("user", prompt);
+  input.value = "";
+  agentTextParts.clear();
+  try {
+    await window.memingoIDE.sendAgentPrompt({prompt,profile});
+    document.getElementById("agentStatus").textContent = "Trabajando…";
+  } catch (error) {
+    addAgentMessage("system", error.message);
+    button.disabled = false;
+  }
+}
+document.getElementById("connectAgent").addEventListener("click", connectAgent);
+document.getElementById("sendAgentPrompt").addEventListener("click", sendAgentPrompt);
+document.getElementById("agentPrompt").addEventListener("keydown", event => {
+  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); sendAgentPrompt(); }
+});
+document.getElementById("stopAgent").addEventListener("click", async () => {
+  try {
+    await window.memingoIDE.stopAgent();
+    addAgentMessage("system", "Se solicitó detener al agente.");
+  } catch (error) { addAgentMessage("system", error.message); }
+});
+
 async function runGitAction(action) {
   if (!projectPath) { log("Abre un proyecto antes de usar Git.", "stderr"); return; }
   let message = "";
