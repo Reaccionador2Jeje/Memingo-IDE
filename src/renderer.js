@@ -834,6 +834,7 @@ async function stageGitConflict() {
 
 
 let agentConnected = false;
+let activeAgentEngine = "opencode";
 const agentConversation = document.getElementById("agentConversation");
 const agentPermission = document.getElementById("agentPermission");
 const agentTextParts = new Map();
@@ -869,6 +870,7 @@ function setAgentConnection(connected, status) {
   document.getElementById("connectAgent").textContent = connected ? "Desconectar" : "Conectar";
   document.getElementById("sendAgentPrompt").disabled = !connected;
   document.getElementById("stopAgent").disabled = !connected;
+  document.getElementById("agentEngine").disabled = connected;
 }
 async function refreshAgentProjectFiles() {
   if (!projectPath) return;
@@ -933,22 +935,92 @@ function showAgentPermission(event) {
   actions.append(once,reject);
   agentPermission.append(title,detail,actions);
 }
+
+function showGoosePermission(event) {
+  const props = event.properties || {};
+  const tool = props.toolCall || {};
+  const options = Array.isArray(props.options) ? props.options : [];
+  agentPermission.replaceChildren();
+  agentPermission.hidden = false;
+  const title = document.createElement("strong");
+  title.textContent = "Goose solicita permiso";
+  const detail = document.createElement("p");
+  const locationText = Array.isArray(tool.locations) ? tool.locations.map(item => item.path || "").filter(Boolean).join("\n") : "";
+  detail.textContent = String(tool.title || "Quiere realizar una acción en el proyecto.") +
+    (tool.kind ? "\nTipo: " + tool.kind : "") +
+    (locationText ? "\nArchivos:\n" + locationText : "");
+  const actions = document.createElement("div");
+  actions.className = "agent-permission-actions";
+  const safeOptions = options.filter(option => ["allow_once", "reject_once"].includes(option.kind));
+  const visibleOptions = safeOptions.length ? safeOptions : [];
+  function reply(optionId, cancelled = false) {
+    return window.memingoIDE.answerAgentPermission({
+      engine: "goose", id: event.requestId,
+      optionId: optionId || (cancelled ? "cancelled" : "")
+    }).then(() => {
+      agentPermission.hidden = true;
+      addAgentMessage("system", cancelled ? "Solicitud de Goose cancelada." : "Decisión enviada a Goose.");
+    }).catch(error => addAgentMessage("system", error.message));
+  }
+  for (const option of visibleOptions) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = option.kind === "allow_once" ? "agent-approve" : "outline";
+    button.textContent = option.kind === "allow_once" ? "Permitir una vez" : "Rechazar";
+    button.addEventListener("click", () => reply(option.optionId));
+    actions.appendChild(button);
+  }
+  if (!visibleOptions.length) {
+    const cancel = document.createElement("button");
+    cancel.type = "button"; cancel.className = "outline"; cancel.textContent = "Cancelar solicitud";
+    cancel.addEventListener("click", () => reply("", true));
+    actions.appendChild(cancel);
+  }
+  agentPermission.append(title, detail, actions);
+}
+function handleGooseUpdate(props) {
+  const update = props.update || {};
+  if (update.sessionUpdate === "agent_message_chunk" && update.content?.type === "text") {
+    const key = String(update.messageId || "goose-answer");
+    agentTextParts.set(key, (agentTextParts.get(key) || "") + String(update.content.text || ""));
+    renderAgentText();
+    return;
+  }
+  if (update.sessionUpdate === "tool_call") {
+    addAgentMessage("system", "Goose: " + String(update.title || update.name || "acción solicitada") + " · " + String(update.status || "pendiente"));
+    return;
+  }
+  if (update.sessionUpdate === "tool_call_update") {
+    addAgentMessage("system", "Acción " + String(update.status || "actualizada") + (update.content?.length ? " · " + update.content.map(item => item.content?.text || "").join(" ") : ""));
+    return;
+  }
+}
+
 function handleAgentEvent(event) {
   if (!event || typeof event !== "object") return;
   const type = String(event.type || "");
   const props = event.properties || event;
   if (type === "agent.connected") {
-    setAgentConnection(true, "Conectado · Permisos protegidos");
-    addAgentMessage("system", event.message || "OpenCode conectado.");
+    activeAgentEngine = event.engine === "goose" ? "goose" : "opencode";
+    setAgentConnection(true, "Conectado · " + (activeAgentEngine === "goose" ? "Goose ACP" : "OpenCode"));
+    addAgentMessage("system", event.message || (activeAgentEngine === "goose" ? "Goose conectado." : "OpenCode conectado."));
     return;
   }
   if (type === "agent.disconnected") {
     setAgentConnection(false, "Desconectado");
+    agentPermission.hidden = true;
     return;
   }
   if (type === "agent.connection.error") {
     setAgentConnection(false, "Error: " + (event.message || "no se pudo conectar"));
     addAgentMessage("system", event.message || "Error de conexión.");
+    return;
+  }
+  if (type === "goose.permission") { showGoosePermission(event); return; }
+  if (type === "goose.session.update") { handleGooseUpdate(props); return; }
+  if (type === "goose.turn.finished") {
+    document.getElementById("agentStatus").textContent = "Conectado · Listo";
+    refreshAgentProjectFiles();
     return;
   }
   if (type.includes("permission") && (type.includes("asked") || type.includes("updated"))) {
@@ -997,11 +1069,13 @@ async function connectAgent() {
   }
   const button = document.getElementById("connectAgent");
   button.disabled = true; button.textContent = "Conectando…";
-  document.getElementById("agentStatus").textContent = "Iniciando OpenCode…";
+  const engine = document.getElementById("agentEngine").value;
+  activeAgentEngine = engine;
+  document.getElementById("agentStatus").textContent = "Iniciando " + (engine === "goose" ? "Goose…" : "OpenCode…");
   try {
-    await window.memingoIDE.connectAgent();
-    setAgentConnection(true, "Conectado · OpenCode");
-    addAgentMessage("system", "OpenCode está listo. Elige un perfil y describe lo que quieres crear.");
+    await window.memingoIDE.connectAgent({engine});
+    setAgentConnection(true, "Conectado · " + (engine === "goose" ? "Goose ACP" : "OpenCode"));
+    addAgentMessage("system", (engine === "goose" ? "Goose" : "OpenCode") + " está listo. Elige un perfil y describe lo que quieres crear.");
   } catch (error) {
     setAgentConnection(false, error.message);
     addAgentMessage("system", error.message);
@@ -1018,7 +1092,7 @@ async function sendAgentPrompt() {
   input.value = "";
   agentTextParts.clear();
   try {
-    await window.memingoIDE.sendAgentPrompt({prompt,profile});
+    await window.memingoIDE.sendAgentPrompt({prompt,profile,engine:activeAgentEngine});
     document.getElementById("agentStatus").textContent = "Trabajando…";
     button.disabled = false;
   } catch (error) {
