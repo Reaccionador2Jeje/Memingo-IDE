@@ -182,3 +182,30 @@ El catálogo se centraliza en `src/languages/registry.js`. El IDE reconoce exten
 **Alcance importante:** esta etapa amplía reconocimiento, apertura, edición, guardado y resaltado general. No significa que todos los lenguajes tengan ya compilador, runtime, depurador, autocompletado inteligente o formateador integrado. Esas capacidades requieren herramientas específicas por lenguaje; se incorporarán mediante integraciones independientes y sin ejecutar comandos arbitrarios desde el editor. Los botones Ejecutar, Comprobar, Formatear y Depurar siguen reservados al runtime Memingo, para evitar enviar accidentalmente otros archivos a ese ejecutable.
 
 Para añadir o ajustar un lenguaje, registra su ID, nombre, extensiones, familia de sintaxis y, cuando corresponda, nombres especiales en `src/languages/registry.js`. Las pruebas de `tests/language-registry.test.js` cubren el catálogo, detección de nombres especiales y extensiones ambiguas.
+
+
+## Language Server Protocol (LSP)
+
+Memingo IDE incluye un cliente LSP propio basado en JSON-RPC sobre stdio. El proceso principal solo inicia ejecutables de una lista fija; el renderer no puede elegir comandos ni argumentos. Los servidores se inician dentro de la carpeta de proyecto abierta y el archivo debe pertenecer a esa carpeta. Se limita el documento a 2 MB y los mensajes entrantes a 16 MB.
+
+Servidores configurados:
+- JavaScript, TypeScript, JSX y TSX: `typescript-language-server`.
+- Python: `pyright-langserver`.
+- Go: `gopls`.
+- Rust: `rust-analyzer`.
+- C y C++: `clangd`.
+- HTML, CSS y SCSS: servidores de `vscode-langservers-extracted`.
+- JSON: `vscode-json-language-server`.
+
+Instalación opcional (elige los que uses):
+
+```bash
+npm install -g typescript typescript-language-server
+npm install -g pyright
+npm install -g vscode-langservers-extracted
+go install golang.org/x/tools/gopls@latest
+```
+
+Para Rust instala rust-analyzer y para C/C++ instala clangd desde sus sitios oficiales. Los ejecutables deben estar disponibles en PATH antes de iniciar Memingo IDE. Abre una carpeta de proyecto y después un archivo compatible: el IDE inicia el servidor correspondiente, envía el documento y recibe diagnósticos en tiempo real. Al cambiar de archivo se cambia el documento LSP activo; al cerrar el IDE se detiene el proceso.
+
+**Alcance de esta primera versión:** inicialización LSP, sincronización completa de documentos y diagnósticos publicados por el servidor. La interfaz muestra errores y advertencias recibidos. Autocompletado LSP, hover, navegación a definición, renombrado y acciones de código quedan para las siguientes etapas. Los servidores externos son software independiente y conservan sus propias licencias y requisitos. Memingo IDE no instala servidores automáticamente ni descarga modelos.
