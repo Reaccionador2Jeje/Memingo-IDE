@@ -7,6 +7,7 @@ const { randomBytes } = require("node:crypto");
 const { getAgentEngine, listAgentEngines, getAgentProfile, listAgentProfiles } = require("./agents/registry");
 const { assertAdapterOperation, listProtocolAdapters } = require("./agents/adapter-contract");
 const { listLanguages, getSupportedExtensions } = require("./languages/registry");
+const { LspClient, getLanguageServer, listLanguageServers } = require("./languages/lsp-client");
 
 let mainWindow;
 let activeProcess = null;
@@ -22,6 +23,9 @@ let gooseRequestSequence = 0;
 const goosePendingRequests = new Map();
 const goosePermissionRequests = new Set();
 let activeAgentEngine = "opencode";
+const lspClient = new LspClient(event => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("lsp:event", event);
+});
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -49,6 +53,7 @@ app.whenReady().then(() => {
 });
 app.on("before-quit", () => {
   if (agentEventAbort) agentEventAbort.abort();
+  lspClient.stop();
   if (agentProcess) agentProcess.kill();
   if (gooseProcess) gooseProcess.kill();
   agentAuthorization = null;
@@ -310,6 +315,30 @@ async function streamAgentEvents(port, signal) {
 }
 ipcMain.handle("agents:list", async () => ({ engines: listAgentEngines(), profiles: listAgentProfiles(), adapters: listProtocolAdapters() }));
 ipcMain.handle("languages:list", async () => listLanguages());
+ipcMain.handle("lsp:servers", async () => listLanguageServers());
+ipcMain.handle("lsp:start", async (_event, payload = {}) => {
+  if (!projectRoot) throw new Error("Abre una carpeta de proyecto para usar LSP.");
+  const languageId = typeof payload.languageId === "string" ? payload.languageId : "";
+  if (!getLanguageServer(languageId)) return { supported:false, message:"Este lenguaje todavía no tiene un servidor LSP configurado." };
+  const filePath = typeof payload.path === "string" ? path.resolve(payload.path) : "";
+  const root = path.resolve(projectRoot);
+  const relative = path.relative(root, filePath);
+  if (!filePath || !relative || relative.startsWith("..") || path.isAbsolute(relative)) throw new Error("El archivo debe estar dentro del proyecto abierto.");
+  const stat = await fs.lstat(filePath).catch(() => null);
+  if (!stat || !stat.isFile() || stat.isSymbolicLink() || stat.size > 2 * 1024 * 1024) throw new Error("El archivo no es regular o supera 2 MB.");
+  const result = await lspClient.start(languageId, root);
+  const source = typeof payload.text === "string" ? payload.text : await fs.readFile(filePath, "utf8");
+  lspClient.open(filePath, languageId, source.slice(0, 2 * 1024 * 1024));
+  return result;
+});
+ipcMain.handle("lsp:change", async (_event, payload = {}) => {
+  if (!lspClient.child || !lspClient.document) return { sent:false };
+  if (typeof payload.text !== "string" || payload.text.length > 2 * 1024 * 1024) throw new Error("El documento supera el límite de 2 MB.");
+  lspClient.change(payload.text);
+  return { sent:true };
+});
+ipcMain.handle("lsp:stop", async () => { await lspClient.stop(); return { stopped:true }; });
+
 
 ipcMain.handle("agents:connect", async (_event, payload = {}) => {
   const engine = typeof payload.engine === "string" ? payload.engine : "opencode";
