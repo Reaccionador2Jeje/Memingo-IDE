@@ -339,6 +339,12 @@ ipcMain.handle("lsp:change", async (_event, payload = {}) => {
   lspClient.change(payload.text);
   return { sent:true };
 });
+ipcMain.handle("lsp:completion", async (_event, payload = {}) => lspClient.completion(payload.position));
+ipcMain.handle("lsp:hover", async (_event, payload = {}) => lspClient.hover(payload.position));
+ipcMain.handle("lsp:definition", async (_event, payload = {}) => lspClient.definition(payload.position));
+ipcMain.handle("lsp:references", async (_event, payload = {}) => lspClient.references(payload.position));
+ipcMain.handle("lsp:rename", async (_event, payload = {}) => lspClient.rename(payload.position, payload.newName));
+ipcMain.handle("lsp:code-action", async (_event, payload = {}) => lspClient.codeAction(payload.range, payload.diagnostics));
 ipcMain.handle("lsp:stop", async () => { await lspClient.stop(); return { stopped:true }; });
 
 
