@@ -630,7 +630,7 @@ ipcMain.handle("project:open-file", async (_event, filePath) => {
   const absolute = path.resolve(filePath);
   const relative = path.relative(projectRoot, absolute);
   if (relative.startsWith("..") || path.isAbsolute(relative)) throw new Error("El archivo está fuera del proyecto.");
-  if (!PROJECT_TEXT_FILE.test(absolute)) throw new Error("El tipo de archivo no está admitido en el explorador.");
+  if (!isSupportedTextFile(absolute)) throw new Error("El tipo de archivo no está admitido en el explorador.");
   const stat = await fs.stat(absolute);
   if (!stat.isFile() || stat.size > 2 * 1024 * 1024) throw new Error("El archivo no es válido o supera 2 MB.");
   return { path: absolute, content: await fs.readFile(absolute, "utf8") };
