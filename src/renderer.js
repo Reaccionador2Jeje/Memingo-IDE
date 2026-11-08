@@ -28,7 +28,6 @@ function updateSyntax() {
     if (token.startsWith("#")) kind = "comment";
     else if (token.startsWith('"') || token.startsWith("'")) kind = "string";
     else if (/^\d/.test(token)) kind = "number";
-    else if (/^\\d/.test(token)) kind = "number";
     else kind = "keyword";
     html += '<span class="tok-' + kind + '">' + escapeHTML(token) + "</span>";
     last = match.index + token.length;
