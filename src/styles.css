@@ -182,3 +182,8 @@ textarea::selection{background:rgba(126,150,210,.35);-webkit-text-fill-color:tra
 
 .agent-doc-link{display:inline-block;margin:0 2px 5px;color:#9dbb83;font-size:9px;text-decoration:none}
 .agent-doc-link:hover{color:#c2ed9d;text-decoration:underline}
+
+
+.agent-engine{flex:1;min-width:0;padding:5px 6px;border:1px solid #383d4c;border-radius:5px;background:#20232d;color:#e1e5ee;font-size:9px}
+.agents-engine-row label{color:#aeb5c4;font-size:9px;white-space:nowrap}
+.agent-engine:disabled{opacity:.7}
