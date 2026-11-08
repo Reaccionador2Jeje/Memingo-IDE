@@ -324,11 +324,13 @@ const GIT_ACTIONS = {
   diff: ["git", ["diff", "--"]],
   log: ["git", ["log", "-5", "--oneline", "--decorate"]],
   branch: ["git", ["branch", "--show-current"]],
+  init: ["git", ["init"]],
   stage: ["git", ["add", "-A"]],
   pull: ["git", ["pull", "--ff-only"]],
   push: ["git", ["push"]],
   githubAuth: ["gh", ["auth", "status"]],
-  githubRepo: ["gh", ["repo", "view", "--json", "nameWithOwner,url,visibility"]]
+  githubRepo: ["gh", ["repo", "view", "--json", "nameWithOwner,url,visibility"]],
+  githubPublish: ["gh", ["repo", "create", "--source", ".", "--remote", "origin", "--private", "--push"]]
 };
 
 async function runVersionControl(action, message = "") {
