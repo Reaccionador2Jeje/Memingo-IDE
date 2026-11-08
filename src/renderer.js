@@ -36,6 +36,7 @@ let suggestionItems = [];
 let languageRegistry = [];
 let languageServerRegistry = [];
 let activeLspKey = null;
+let activeLspUri = null;
 let lspChangeTimer = null;
 let lspCompletionTimer = null;
 let lspCompletionMode = false;
@@ -490,7 +491,7 @@ function showProblems() {
  syncActiveToTab();outputMode="problems";output.replaceChildren();
  const tab=activeTab(),local=analyzeSource(editor.value).map(item=>({line:item.line,message:item.message,severity:1,local:true}));
  let remote=[];
- if(tab?.path&&lspDiagnosticsUri===new URL("file://"+tab.path).href)remote=lspDiagnostics.map(item=>({line:(item.range?.start?.line??0)+1,message:item.message||"Diagnóstico LSP",severity:item.severity||3,range:item.range}));
+ if(tab?.path&&lspDiagnosticsUri===activeLspUri)remote=lspDiagnostics.map(item=>({line:(item.range?.start?.line??0)+1,message:item.message||"Diagnóstico LSP",severity:item.severity||3,range:item.range}));
  const errors=[...local,...remote].sort((a,b)=>a.line-b.line);
  if(!errors.length){const item=document.createElement("div");item.className="hint-line";item.textContent="✓ No se encontraron errores ni advertencias.";output.appendChild(item);return;}
  for(const error of errors){
@@ -578,7 +579,7 @@ async function lspHover(){if(!activeLspKey)return log("No hay un servidor LSP ac
 async function lspDefinition(){if(!activeLspKey)return log("No hay un servidor LSP activo.","hint-line");try{const result=await window.memingoIDE.requestLspDefinition({position:editorPosition()}),location=Array.isArray(result)?result[0]:result;if(!location)return log("No se encontró una definición.","hint-line");await navigateLspLocation(location);}catch(error){log("Definición: "+error.message,"stderr");}}
 async function lspReferences(){if(!activeLspKey)return log("No hay un servidor LSP activo.","hint-line");try{const result=await window.memingoIDE.requestLspReferences({position:editorPosition()}),items=Array.isArray(result)?result.slice(0,30):[];if(!items.length)return log("No se encontraron referencias.","hint-line");log("Referencias encontradas: "+items.length,"hint-line");for(const location of items){const part=locationParts(location),button=document.createElement("button");button.type="button";button.className="problem-item";button.textContent=(part?.uri?.split("/").pop()||"archivo")+":"+(part?.range?.start?.line+1||1);button.addEventListener("click",()=>navigateLspLocation(location));output.appendChild(button);}}catch(error){log("Referencias: "+error.message,"stderr");}}
 function applyCurrentWorkspaceEdit(edit){
- const tab=activeTab();if(!tab?.path||!edit)return false;const uri=new URL("file://"+tab.path).href;
+ const tab=activeTab();if(!tab?.path||!edit||!activeLspUri)return false;const uri=activeLspUri;
  let edits=edit.changes?.[uri]||[];if(!edits.length&&Array.isArray(edit.documentChanges)){const entry=edit.documentChanges.find(item=>item.textDocument?.uri===uri);edits=entry?.edits||[];}
  if(!Array.isArray(edits)||!edits.length)return false;
  const prepared=edits.map(item=>({start:offsetAt(item.range.start),end:offsetAt(item.range.end),text:String(item.newText??"")})).sort((a,b)=>b.start-a.start);
