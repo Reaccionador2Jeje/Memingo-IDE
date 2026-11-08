@@ -13,6 +13,12 @@ let agentPort = null;
 let agentSessionId = null;
 let agentEventAbort = null;
 let agentAuthorization = null;
+let gooseProcess = null;
+let gooseSessionId = null;
+let gooseRequestSequence = 0;
+const goosePendingRequests = new Map();
+const goosePermissionRequests = new Set();
+let activeAgentEngine = "opencode";
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -41,12 +47,146 @@ app.whenReady().then(() => {
 app.on("before-quit", () => {
   if (agentEventAbort) agentEventAbort.abort();
   if (agentProcess) agentProcess.kill();
+  if (gooseProcess) gooseProcess.kill();
   agentAuthorization = null;
 });
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
+
+
+function gooseSend(message) {
+  if (!gooseProcess || !gooseProcess.stdin.writable) throw new Error("Goose no está conectado.");
+  gooseProcess.stdin.write(JSON.stringify(message) + "\n");
+}
+function gooseRequest(method, params, timeout = 30000) {
+  const id = ++gooseRequestSequence;
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      goosePendingRequests.delete(id);
+      reject(new Error("Goose no respondió a tiempo (" + method + ")."));
+    }, timeout);
+    goosePendingRequests.set(id, { resolve, reject, timer, method });
+    try { gooseSend({ jsonrpc: "2.0", id, method, params }); }
+    catch (error) {
+      clearTimeout(timer);
+      goosePendingRequests.delete(id);
+      reject(error);
+    }
+  });
+}
+function finishGooseRequest(message) {
+  const pending = goosePendingRequests.get(message.id);
+  if (!pending) return false;
+  clearTimeout(pending.timer);
+  goosePendingRequests.delete(message.id);
+  if (message.error) pending.reject(new Error(message.error.message || "Error de Goose."));
+  else pending.resolve(message.result || {});
+  return true;
+}
+function handleGooseMessage(message) {
+  if (!message || typeof message !== "object") return;
+  if (message.id !== undefined && (message.result !== undefined || message.error !== undefined)) {
+    finishGooseRequest(message);
+    return;
+  }
+  if (message.method === "session/request_permission" && message.id !== undefined) {
+    goosePermissionRequests.add(message.id);
+    sendAgentEvent({ type: "goose.permission", requestId: message.id, properties: message.params || {} });
+    return;
+  }
+  if (message.method === "session/update") {
+    sendAgentEvent({ type: "goose.session.update", properties: message.params || {} });
+    return;
+  }
+  if (message.method) sendAgentEvent({ type: "goose.notification", method: message.method, properties: message.params || {} });
+}
+async function connectGoose() {
+  if (!projectRoot) throw new Error("Abre una carpeta de proyecto antes de conectar un agente.");
+  if (gooseProcess && gooseSessionId) return { connected: true, engine: "goose" };
+  const root = path.resolve(projectRoot);
+  const stat = await fs.stat(root).catch(() => null);
+  if (!stat || !stat.isDirectory()) throw new Error("La carpeta del proyecto ya no está disponible.");
+  const child = spawn(process.platform === "win32" ? "goose.exe" : "goose", ["acp"], {
+    cwd: root,
+    windowsHide: true,
+    shell: false,
+    stdio: ["pipe", "pipe", "pipe"],
+    env: { ...process.env, GOOSE_MODE: "approve" }
+  });
+  gooseProcess = child;
+  let buffer = "";
+  child.stdout.setEncoding("utf8");
+  child.stdout.on("data", chunk => {
+    buffer += chunk;
+    let newline;
+    while ((newline = buffer.indexOf("\n")) >= 0) {
+      const line = buffer.slice(0, newline).trim();
+      buffer = buffer.slice(newline + 1);
+      if (!line) continue;
+      try { handleGooseMessage(JSON.parse(line)); }
+      catch { sendAgentEvent({ type: "agent.log", text: "Goose envió una línea ACP no válida." }); }
+    }
+  });
+  child.stderr.on("data", data => sendAgentEvent({ type: "agent.log", text: data.toString() }));
+  child.on("error", error => {
+    if (gooseProcess === child) { gooseProcess = null; gooseSessionId = null; }
+    const message = error.code === "ENOENT"
+      ? "No se encontró Goose. Instálalo desde https://github.com/aaif-goose/goose y configura un proveedor."
+      : error.message;
+    sendAgentEvent({ type: "agent.connection.error", message });
+  });
+  child.on("exit", code => {
+    if (gooseProcess === child) {
+      gooseProcess = null;
+      gooseSessionId = null;
+      for (const [id, pending] of goosePendingRequests) {
+        clearTimeout(pending.timer);
+        pending.reject(new Error("Goose se cerró inesperadamente."));
+        goosePendingRequests.delete(id);
+      }
+      goosePermissionRequests.clear();
+      sendAgentEvent({ type: "agent.disconnected", engine: "goose", code });
+    }
+  });
+  try {
+    const initialized = await gooseRequest("initialize", {
+      protocolVersion: 1,
+      clientInfo: { name: "memingo-ide", version: "0.1.0" },
+      clientCapabilities: {}
+    }, 45000);
+    if (initialized.protocolVersion !== 1) throw new Error("Goose respondió con una versión ACP no compatible.");
+    gooseSend({ jsonrpc: "2.0", method: "initialized", params: {} });
+    const session = await gooseRequest("session/new", { cwd: root, mcpServers: [] }, 60000);
+    if (!session.sessionId) throw new Error("Goose no devolvió un identificador de sesión.");
+    gooseSessionId = session.sessionId;
+    activeAgentEngine = "goose";
+    sendAgentEvent({ type: "agent.connected", engine: "goose", message: "Goose conectado mediante ACP. Las acciones requieren aprobación." });
+    return { connected: true, engine: "goose" };
+  } catch (error) {
+    if (gooseProcess === child) { gooseProcess = null; child.kill(); }
+    gooseSessionId = null;
+    throw error;
+  }
+}
+async function disconnectGoose() {
+  for (const id of goosePermissionRequests) {
+    try { gooseSend({ jsonrpc: "2.0", id, result: { outcome: { outcome: "cancelled" } } }); } catch {}
+  }
+  goosePermissionRequests.clear();
+  for (const [id, pending] of goosePendingRequests) {
+    clearTimeout(pending.timer);
+    pending.reject(new Error("Sesión Goose cerrada."));
+    goosePendingRequests.delete(id);
+  }
+  if (gooseProcess) {
+    const child = gooseProcess;
+    gooseProcess = null;
+    gooseSessionId = null;
+    child.kill();
+  }
+}
 
 function sendAgentEvent(payload) {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("agents:event", payload);
@@ -159,7 +299,9 @@ async function streamAgentEvents(port, signal) {
     if (!signal.aborted) sendAgentEvent({ type: "agent.connection.error", message: error.message });
   }
 }
-ipcMain.handle("agents:connect", async () => {
+ipcMain.handle("agents:connect", async (_event, payload = {}) => {
+  const engine = payload.engine === "goose" ? "goose" : "opencode";
+  if (engine === "goose") return connectGoose();
   if (!projectRoot) throw new Error("Abre una carpeta de proyecto antes de conectar un agente.");
   if (agentProcess && agentPort) return { connected: true, port: agentPort };
   const root = path.resolve(projectRoot);
@@ -216,6 +358,23 @@ ipcMain.handle("agents:connect", async () => {
   return { connected: true, port };
 });
 ipcMain.handle("agents:send", async (_event, payload = {}) => {
+  const engine = payload.engine === "goose" ? "goose" : "opencode";
+  if (engine === "goose") {
+    if (!projectRoot || !gooseProcess || !gooseSessionId) throw new Error("Conecta Goose primero.");
+    const prompt = typeof payload.prompt === "string" ? payload.prompt.trim() : "";
+    const profile = typeof payload.profile === "string" ? payload.profile : "plan";
+    if (!prompt || prompt.length > 8000) throw new Error("Escribe una petición de entre 1 y 8000 caracteres.");
+    if (!["plan", "build", "review"].includes(profile)) throw new Error("Perfil de agente no permitido.");
+    const guidance = {
+      plan: "Trabaja en modo planificación. No edites archivos ni ejecutes comandos. Explica cada paso en español sencillo.",
+      build: "Ayuda a construir lo solicitado. Antes de cada operación que requiera permiso, espera la decisión del usuario. Explica en español qué harás. No publiques ni subas cambios a Git.",
+      review: "Revisa el proyecto y explica errores y mejoras en español. No edites archivos ni ejecutes comandos."
+    };
+    gooseRequest("session/prompt", { sessionId: gooseSessionId, prompt: [{ type: "text", text: guidance[profile] + "\n\nPetición del usuario:\n" + prompt }] }, 15 * 60 * 1000)
+      .then(result => sendAgentEvent({ type: "goose.turn.finished", properties: result }))
+      .catch(error => sendAgentEvent({ type: "agent.connection.error", message: error.message, engine: "goose" }));
+    return { sent: true, sessionId: gooseSessionId, engine: "goose" };
+  }
   if (!projectRoot || !agentPort) throw new Error("Conecta OpenCode primero.");
   const prompt = typeof payload.prompt === "string" ? payload.prompt.trim() : "";
   const profile = typeof payload.profile === "string" ? payload.profile : "plan";
@@ -241,6 +400,14 @@ ipcMain.handle("agents:send", async (_event, payload = {}) => {
   return { sent: true, sessionId: agentSessionId };
 });
 ipcMain.handle("agents:permission", async (_event, payload = {}) => {
+  if (payload.engine === "goose") {
+    const id = Number(payload.id);
+    const optionId = typeof payload.optionId === "string" ? payload.optionId : "";
+    if (!Number.isSafeInteger(id) || !goosePermissionRequests.has(id) || !/^[A-Za-z0-9_.:-]{1,160}$/.test(optionId)) throw new Error("Solicitud de permiso Goose no válida.");
+    gooseSend({ jsonrpc: "2.0", id, result: { outcome: { outcome: "selected", optionId } } });
+    goosePermissionRequests.delete(id);
+    return { answered: true };
+  }
   if (!agentSessionId || typeof payload.id !== "string" || !/^[A-Za-z0-9_-]{1,160}$/.test(payload.id)) throw new Error("Solicitud de permiso no válida.");
   const response = payload.response === "once" ? "once" : "reject";
   const sessionPath = "/session/" + encodeURIComponent(agentSessionId);
@@ -248,12 +415,17 @@ ipcMain.handle("agents:permission", async (_event, payload = {}) => {
   return agentApiCompat("POST", "/api" + sessionPath + "/permission/" + requestId + "/reply", sessionPath + "/permissions/" + requestId, { response, remember: false });
 });
 ipcMain.handle("agents:stop", async () => {
+  if (activeAgentEngine === "goose" && gooseProcess && gooseSessionId) {
+    await gooseRequest("session/cancel", { sessionId: gooseSessionId }, 10000).catch(() => null);
+    return { stopped: true };
+  }
   if (!agentSessionId || !agentPort) return { stopped: false };
   const sessionPath = "/session/" + encodeURIComponent(agentSessionId);
   await agentApiCompat("POST", "/api" + sessionPath + "/interrupt", sessionPath + "/abort").catch(() => null);
   return { stopped: true };
 });
 ipcMain.handle("agents:disconnect", async () => {
+  await disconnectGoose();
   if (agentEventAbort) { agentEventAbort.abort(); agentEventAbort = null; }
   if (agentProcess) { const child = agentProcess; agentProcess = null; child.kill(); }
   agentPort = null; agentSessionId = null; agentAuthorization = null;
@@ -413,6 +585,7 @@ ipcMain.handle("project:open", async () => {
   const result = await dialog.showOpenDialog(mainWindow, { properties: ["openDirectory"] });
   if (result.canceled || !result.filePaths[0]) return null;
   if (agentEventAbort) { agentEventAbort.abort(); agentEventAbort = null; }
+  await disconnectGoose();
   if (agentProcess) { const previousAgent = agentProcess; agentProcess = null; previousAgent.kill(); sendAgentEvent({ type: "agent.disconnected", message: "Se cambió de proyecto. Vuelve a conectar el agente." }); }
   agentPort = null; agentSessionId = null; agentAuthorization = null;
   projectRoot = path.resolve(result.filePaths[0]);
