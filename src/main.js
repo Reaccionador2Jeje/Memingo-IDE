@@ -5,6 +5,7 @@ const path = require("node:path");
 
 let mainWindow;
 let activeProcess = null;
+let projectRoot = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -119,4 +120,37 @@ ipcMain.handle("memingo:stop", () => {
   activeProcess = null;
   child.kill();
   return true;
+});
+
+ipcMain.handle("project:open", async () => {
+  const result = await dialog.showOpenDialog(mainWindow, { properties: ["openDirectory"] });
+  if (result.canceled || !result.filePaths[0]) return null;
+  projectRoot = path.resolve(result.filePaths[0]);
+  async function scan(directory, depth = 0) {
+    if (depth > 5) return [];
+    const entries = await fs.readdir(directory, { withFileTypes: true });
+    const items = [];
+    for (const entry of entries.slice(0, 300)) {
+      if (entry.name.startsWith(".") || ["node_modules", "dist", "build", "__pycache__"].includes(entry.name)) continue;
+      const fullPath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        items.push({ name: entry.name, path: fullPath, type: "directory", children: await scan(fullPath, depth + 1) });
+      } else if (entry.isFile() && /\.(mgo|mgoa)$/i.test(entry.name)) {
+        items.push({ name: entry.name, path: fullPath, type: "file" });
+      }
+    }
+    return items;
+  }
+  return { path: projectRoot, name: path.basename(projectRoot), tree: await scan(projectRoot) };
+});
+
+ipcMain.handle("project:open-file", async (_event, filePath) => {
+  if (!projectRoot || typeof filePath !== "string") throw new Error("Abre un proyecto primero.");
+  const absolute = path.resolve(filePath);
+  const relative = path.relative(projectRoot, absolute);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) throw new Error("El archivo está fuera del proyecto.");
+  if (!/\.(mgo|mgoa)$/i.test(absolute)) throw new Error("Solo se admiten archivos .mgo y .mgoa desde el explorador.");
+  const stat = await fs.stat(absolute);
+  if (!stat.isFile() || stat.size > 2 * 1024 * 1024) throw new Error("El archivo no es válido o supera 2 MB.");
+  return { path: absolute, content: await fs.readFile(absolute, "utf8") };
 });
