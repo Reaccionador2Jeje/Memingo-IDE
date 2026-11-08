@@ -190,3 +190,5 @@ textarea::selection{background:rgba(126,150,210,.35);-webkit-text-fill-color:tra
 
 /* Tokens adicionales para resaltado multilenguaje. */
 .tok-tag{color:#7dd3fc}.tok-type{color:#c4a7ff}.tok-value{color:#f0c674}.tok-builtin{color:#82cfff}.tok-keyword{color:#c792ea}.tok-string{color:#a8d68b}.tok-comment{color:#727987}.tok-number{color:#f2a97b}
+
+#languageSelect{max-width:150px;min-width:105px;padding:2px 5px;border:0;border-radius:4px;background:rgba(24,32,15,.12);color:#1c2714;font:600 10px Inter,"Segoe UI",sans-serif;outline-offset:2px}#languageSelect option{background:#171820;color:#e7e8ee}
