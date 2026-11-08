@@ -71,3 +71,10 @@ BSL License.
 - **Formatear** ejecuta `memingo fmt <archivo.mgo>`, actualiza el archivo guardado y sincroniza el editor.
 - Ambas herramientas requieren el runtime Memingo instalado y disponible en `PATH`.
 - El panel PROBLEMAS conserva el análisis rápido local de delimitadores; **Comprobar** es la validación real del runtime.
+
+
+## Reconocimiento de proyectos
+
+Al abrir una carpeta, Memingo IDE busca `memingo.toml` en la raíz y muestra el nombre, versión, archivo principal y cantidad de dependencias declaradas. Si el archivo principal existe, puedes abrirlo desde la tarjeta del proyecto. Si no hay manifest, la carpeta sigue disponible como espacio de trabajo normal.
+
+La lectura del manifest está limitada a 64 KB y la ruta del archivo principal se comprueba para que permanezca dentro de la carpeta del proyecto.
