@@ -4,6 +4,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const net = require("node:net");
 const { randomBytes } = require("node:crypto");
+const { getAgentEngine, listAgentEngines, getAgentProfile, listAgentProfiles } = require("./agents/registry");
 
 let mainWindow;
 let activeProcess = null;
@@ -305,8 +306,12 @@ async function streamAgentEvents(port, signal) {
     if (!signal.aborted) sendAgentEvent({ type: "agent.connection.error", message: error.message });
   }
 }
+ipcMain.handle("agents:list", async () => ({ engines: listAgentEngines(), profiles: listAgentProfiles() }));
+
 ipcMain.handle("agents:connect", async (_event, payload = {}) => {
-  const engine = payload.engine === "goose" ? "goose" : "opencode";
+  const engine = typeof payload.engine === "string" ? payload.engine : "opencode";
+  const engineDefinition = getAgentEngine(engine);
+  if (!engineDefinition) throw new Error("Motor de agente no registrado. Actualiza Memingo IDE.");
   activeAgentEngine = engine;
   if (engine === "goose") return connectGoose();
   if (!projectRoot) throw new Error("Abre una carpeta de proyecto antes de conectar un agente.");
@@ -365,39 +370,22 @@ ipcMain.handle("agents:connect", async (_event, payload = {}) => {
   return { connected: true, port };
 });
 ipcMain.handle("agents:send", async (_event, payload = {}) => {
-  const engine = payload.engine === "goose" ? "goose" : "opencode";
-  if (engine === "goose") {
+  const engine = typeof payload.engine === "string" ? payload.engine : activeAgentEngine;
+  const engineDefinition = getAgentEngine(engine);
+  if (!engineDefinition) throw new Error("Motor de agente no registrado.");
+  if (engineDefinition.protocol === "acp") {
     if (!projectRoot || !gooseProcess || !gooseSessionId) throw new Error("Conecta Goose primero.");
     const prompt = typeof payload.prompt === "string" ? payload.prompt.trim() : "";
     const profile = typeof payload.profile === "string" ? payload.profile : "plan";
-    if (!prompt || prompt.length > 8000) throw new Error("Escribe una petición de entre 1 y 8000 caracteres.");
-    if (!["plan", "build", "review"].includes(profile)) throw new Error("Perfil de agente no permitido.");
-    const guidance = {
-      plan: "Trabaja en modo planificación. No edites archivos ni ejecutes comandos. Explica cada paso en español sencillo.",
-      build: "Ayuda a construir lo solicitado. Antes de cada operación que requiera permiso, espera la decisión del usuario. Explica en español qué harás. No publiques ni subas cambios a Git.",
-      review: "Revisa el proyecto y explica errores y mejoras en español. No edites archivos ni ejecutes comandos."
-    };
-    gooseRequest("session/prompt", { sessionId: gooseSessionId, prompt: [{ type: "text", text: guidance[profile] + "\n\nPetición del usuario:\n" + prompt }] }, 15 * 60 * 1000)
-      .then(result => sendAgentEvent({ type: "goose.turn.finished", properties: result }))
-      .catch(error => sendAgentEvent({ type: "agent.connection.error", message: error.message, engine: "goose" }));
-    return { sent: true, sessionId: gooseSessionId, engine: "goose" };
-  }
-  if (!projectRoot || !agentPort) throw new Error("Conecta OpenCode primero.");
-  const prompt = typeof payload.prompt === "string" ? payload.prompt.trim() : "";
-  const profile = typeof payload.profile === "string" ? payload.profile : "plan";
+  const profileDefinition = getAgentProfile(profile);
   if (!prompt || prompt.length > 8000) throw new Error("Escribe una petición de entre 1 y 8000 caracteres.");
-  if (!["plan", "build", "review"].includes(profile)) throw new Error("Perfil de agente no permitido.");
+  if (!profileDefinition) throw new Error("Perfil de agente no registrado.");
   if (!agentSessionId) {
     const session = await agentApiCompat("POST", "/api/session", "/session", { title: "Memingo IDE · " + profile });
     if (!session?.id) throw new Error("OpenCode no devolvió una sesión válida.");
     agentSessionId = session.id;
   }
-  const profileInstructions = {
-    plan: "Analiza el proyecto y explica en español un plan paso a paso. No modifiques archivos ni ejecutes comandos.",
-    build: "Ayuda a construir lo solicitado. Antes de cada acción que requiera permiso, espera la aprobación del usuario. Explica en español qué cambiarás y por qué. No publiques ni subas cambios a Git.",
-    review: "Revisa el proyecto buscando errores, riesgos y mejoras. No modifiques archivos ni ejecutes comandos. Explica los hallazgos en español y ordénalos por importancia."
-  };
-  const fullPrompt = profileInstructions[profile] + "\n\nPetición del usuario:\n" + prompt + "\n\nEl usuario puede ser principiante: evita jerga innecesaria, explica cada paso y pregunta si falta información importante.";
+  const fullPrompt = profileDefinition.openCodeInstruction + "\n\nPetición del usuario:\n" + prompt + "\n\nEl usuario puede ser principiante: evita jerga innecesaria, explica cada paso y pregunta si falta información importante.";
   const sessionPath = "/session/" + encodeURIComponent(agentSessionId);
   const promptBody = {
     agent: profile === "build" ? "build" : "plan",
