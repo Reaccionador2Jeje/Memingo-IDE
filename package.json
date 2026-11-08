@@ -1,0 +1,23 @@
+{
+  "name": "memingo-ide",
+  "version": "0.1.0",
+  "description": "Desktop IDE for the Memingo programming language",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^37.2.6",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "dev.atdev.memingoide",
+    "productName": "Memingo IDE",
+    "files": ["src/**/*", "package.json"],
+    "linux": { "target": ["AppImage", "deb"] },
+    "win": { "target": ["nsis"] },
+    "mac": { "target": ["dmg"] }
+  }
+}
