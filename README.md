@@ -129,3 +129,24 @@ El panel muestra hasta 30 commits recientes con hash corto, autor, fecha y mensa
 - Fusiona otra rama en la actual con confirmación previa. Si Git detecta conflictos, la operación queda pendiente para resolverlos.
 - La sección **Conflictos** permite abrir cada archivo en un editor, guardar la resolución y marcarlo como resuelto (git add). También permite cancelar una fusión pendiente con `git merge --abort`.
 - Los nombres de rama se validan con `git check-ref-format`; las operaciones usan argumentos separados y no ejecutan shell.
+
+
+### Agentes de programación de código abierto
+
+Memingo IDE incluye un panel para trabajar con **OpenCode**, un agente de programación de código abierto (MIT), con tres perfiles pensados para principiantes:
+
+- **Planificador:** analiza la idea y prepara instrucciones sin editar archivos.
+- **Constructor:** crea y modifica archivos; las acciones protegidas requieren aprobación.
+- **Revisor:** analiza el proyecto y explica posibles errores y mejoras sin editar.
+
+#### Requisitos del agente
+
+- OpenCode instalado y disponible como comando `opencode`.
+- Un proveedor/modelo configurado en OpenCode. Puede ser un servicio remoto o un modelo local compatible; Memingo IDE no incluye modelos ni solicita claves API.
+- Abrir una carpeta de proyecto antes de conectar.
+
+Instala OpenCode siguiendo su documentación oficial: https://opencode.ai/docs/
+
+Al conectar, Memingo IDE inicia el servidor de OpenCode solo en `127.0.0.1` y crea/actualiza `.opencode/opencode.json` en el proyecto con permisos conservadores: lectura normal permitida, archivos de entorno protegidos, modificaciones y comandos requieren aprobación, acceso fuera del proyecto denegado y `git push` bloqueado. Si ya existe una configuración JSON válida, conserva las demás opciones y ajusta las reglas de permisos; si el archivo usa JSONC o no se puede interpretar, la conexión se detiene para evitar sobrescribirlo.
+
+Las aprobaciones se muestran en el panel del agente. **Permitir una vez** no guarda una autorización permanente; **Rechazar** niega la acción. El perfil Constructor puede modificar el proyecto, así que revisa cada solicitud. El software del agente es abierto, pero el modelo conectado puede tener otra licencia o condiciones de uso.
