@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld("memingoIDE", {
   terminalExecute: payload => ipcRenderer.invoke("terminal:execute", payload),
   versionControl: payload => ipcRenderer.invoke("vcs:execute", payload),
   versionControlFile: payload => ipcRenderer.invoke("vcs:file", payload),
+  versionControlCommit: payload => ipcRenderer.invoke("vcs:commit-detail", payload),
   stop: () => ipcRenderer.invoke("memingo:stop"),
   onOutput: callback => {
     const listener = (_event, data) => callback(data);
