@@ -133,7 +133,7 @@ El panel muestra hasta 30 commits recientes con hash corto, autor, fecha y mensa
 
 ### Agentes de programación de código abierto
 
-Memingo IDE incluye un panel que integra el motor **OpenCode** (MIT) con tres perfiles de trabajo pensados para principiantes. Son perfiles del mismo motor, no tres programas independientes:
+Memingo IDE incluye un panel de agentes con dos motores de código abierto seleccionables: **OpenCode** (MIT) y **Goose** (Apache-2.0). Ambos ofrecen tres perfiles de trabajo pensados para principiantes:
 
 - **Planificador:** analiza la idea y prepara instrucciones sin editar archivos.
 - **Constructor:** crea y modifica archivos; las acciones protegidas requieren aprobación.
@@ -141,12 +141,12 @@ Memingo IDE incluye un panel que integra el motor **OpenCode** (MIT) con tres pe
 
 #### Requisitos del agente
 
-- OpenCode instalado y disponible como comando `opencode`.
-- Un proveedor/modelo configurado en OpenCode. Puede ser un servicio remoto o un modelo local compatible; Memingo IDE no incluye modelos ni solicita claves API.
+- El motor elegido instalado y disponible en PATH: `opencode` para OpenCode o `goose` para Goose.
+- Un proveedor/modelo configurado dentro del motor elegido. Goose admite varios proveedores y modelos locales; Memingo IDE no incluye ni descarga modelos y no solicita claves API.
 - Abrir una carpeta de proyecto antes de conectar.
 
-Instala OpenCode siguiendo su [repositorio oficial](https://github.com/anomalyco/opencode) y su [documentación](https://opencode.ai/docs/).
+Instala [OpenCode](https://github.com/anomalyco/opencode) desde su [documentación](https://opencode.ai/docs/) o [Goose](https://github.com/aaif-goose/goose) siguiendo su [guía oficial](https://goose-docs.ai/docs/quickstart/).
 
-Al conectar, Memingo IDE inicia el servidor de OpenCode solo en `127.0.0.1` y crea/actualiza `.opencode/opencode.json` en el proyecto con permisos conservadores: lectura normal permitida, archivos de entorno protegidos, modificaciones y comandos requieren aprobación, acceso fuera del proyecto denegado y `git push` bloqueado. Si ya existe una configuración JSON válida, conserva las demás opciones y ajusta las reglas de permisos; si el archivo usa JSONC o no se puede interpretar, la conexión se detiene para evitar sobrescribirlo.
+OpenCode se inicia como servidor local autenticado en `127.0.0.1` y usa `.opencode/opencode.json` con permisos conservadores. Goose se inicia como proceso local `goose acp` mediante el protocolo ACP, en modo `approve`, y usa el directorio del proyecto como carpeta de trabajo. Las solicitudes ACP muestran las opciones de permiso de una sola vez; Memingo no ofrece aprobaciones permanentes. La política de permisos de cada motor es independiente: revisa siempre el alcance y los detalles de cada acción antes de aprobar.
 
-Las aprobaciones se muestran en el panel del agente. **Permitir una vez** no guarda una autorización permanente; **Rechazar** niega la acción. El perfil Constructor puede modificar el proyecto, así que revisa cada solicitud. Al finalizar una tarea, el explorador y los archivos abiertos sin cambios pendientes se actualizan. El motor OpenCode es MIT, pero el modelo conectado puede tener otra licencia, requerir una cuenta o generar costes. Puedes configurar un modelo local compatible desde OpenCode; Memingo IDE no descarga modelos automáticamente.
+Las aprobaciones se muestran en el panel del agente. **Permitir una vez** no guarda una autorización permanente; **Rechazar** niega la acción. El perfil Constructor puede modificar el proyecto, así que revisa cada solicitud. Al finalizar una tarea, el explorador y los archivos abiertos sin cambios pendientes se actualizan. OpenCode usa licencia MIT y Goose Apache-2.0. Las licencias y condiciones del modelo conectado son independientes; algunos proveedores requieren cuenta o pueden generar costes. Puedes configurar modelos locales compatibles en el motor correspondiente; Memingo IDE no descarga modelos automáticamente.
