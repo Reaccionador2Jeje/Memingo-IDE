@@ -21,11 +21,11 @@
   <main class="workspace">
     <aside class="activity"><div class="active">▤</div><div>⌕</div><div>⚙</div><div class="bottom">?</div></aside>
     <section class="editor-area">
-      <div class="tabbar"><div class="tab"><span class="file-icon">M</span><span id="tabName">Bienvenido.mgo</span><span class="dirty" id="dirtyMark"></span></div><div class="path-label" id="pathLabel">Sin proyecto abierto</div></div>
+      <div class="tabbar"><div class="tabs" id="tabs"></div><div class="path-label" id="pathLabel">Sin proyecto abierto</div></div>
       <div class="editor-wrap">
         <div class="gutter" id="gutter">1</div>
         <pre class="syntax-layer" id="syntaxLayer" aria-hidden="true"></pre>
-        <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Editor de código" placeholder="# Escribe tu código Memingo aquí..."></textarea>
+        <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Editor de código" placeholder="# Escribe tu código Memingo aquí..."></textarea><div id="autocomplete" class="autocomplete" hidden></div>
       </div>
       <footer class="status"><span>● Memingo</span><span id="statusText">Listo</span><span>UTF-8</span><span>LF</span><span>.mgo</span></footer>
     </section>
@@ -36,7 +36,7 @@
     </aside>
   </main>
   <section class="terminal">
-    <div class="terminal-head"><div class="terminal-tabs"><button class="selected">CONSOLA</button><button id="clearBtn">PROBLEMAS</button></div><div class="terminal-tools"><span id="runStatus">● Inactivo</span><button id="stopBtn" title="Detener">■</button><button id="clearOutput">⌫</button></div></div>
+    <div class="terminal-head"><div class="terminal-tabs"><button id="consoleTab" class="selected">CONSOLA</button><button id="problemsTab">PROBLEMAS</button></div><div class="terminal-tools"><span id="runStatus">● Inactivo</span><button id="stopBtn" title="Detener">■</button><button id="clearOutput">⌫</button></div></div>
     <div id="output" class="output"><div class="welcome-line">Memingo IDE Terminal <span>—</span> Lista para ejecutar tus programas.</div><div class="hint-line">Pulsa <kbd>Ctrl</kbd> + <kbd>Enter</kbd> para ejecutar el archivo actual.</div></div>
   </section>
   <script src="renderer.js"></script>
