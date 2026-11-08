@@ -383,6 +383,24 @@ async function readProjectManifest(root) {
   };
 }
 
+
+const PROJECT_TEXT_FILE = /\.(mgo|mgoa|js|mjs|cjs|ts|tsx|jsx|json|html|css|scss|md|mdx|py|rs|go|java|c|h|cpp|hpp|cs|toml|yaml|yml|sh|sql|xml|svg|txt|ini|cfg|conf)$/i;
+async function scanProjectTree(directory, depth = 0) {
+  if (depth > 5) return [];
+  const entries = await fs.readdir(directory, { withFileTypes: true });
+  const items = [];
+  for (const entry of entries.slice(0, 300)) {
+    if (entry.name.startsWith(".") || ["node_modules", "dist", "build", "__pycache__", ".git"].includes(entry.name)) continue;
+    const fullPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      items.push({ name: entry.name, path: fullPath, type: "directory", children: await scanProjectTree(fullPath, depth + 1) });
+    } else if (entry.isFile() && PROJECT_TEXT_FILE.test(entry.name)) {
+      items.push({ name: entry.name, path: fullPath, type: "file" });
+    }
+  }
+  return items;
+}
+
 ipcMain.handle("project:open", async () => {
   const result = await dialog.showOpenDialog(mainWindow, { properties: ["openDirectory"] });
   if (result.canceled || !result.filePaths[0]) return null;
@@ -390,22 +408,12 @@ ipcMain.handle("project:open", async () => {
   if (agentProcess) { const previousAgent = agentProcess; agentProcess = null; previousAgent.kill(); }
   agentPort = null; agentSessionId = null;
   projectRoot = path.resolve(result.filePaths[0]);
-  async function scan(directory, depth = 0) {
-    if (depth > 5) return [];
-    const entries = await fs.readdir(directory, { withFileTypes: true });
-    const items = [];
-    for (const entry of entries.slice(0, 300)) {
-      if (entry.name.startsWith(".") || ["node_modules", "dist", "build", "__pycache__"].includes(entry.name)) continue;
-      const fullPath = path.join(directory, entry.name);
-      if (entry.isDirectory()) {
-        items.push({ name: entry.name, path: fullPath, type: "directory", children: await scan(fullPath, depth + 1) });
-      } else if (entry.isFile() && /\.(mgo|mgoa)$/i.test(entry.name)) {
-        items.push({ name: entry.name, path: fullPath, type: "file" });
-      }
-    }
-    return items;
-  }
-  return { path: projectRoot, name: path.basename(projectRoot), manifest: await readProjectManifest(projectRoot), tree: await scan(projectRoot) };
+  return { path: projectRoot, name: path.basename(projectRoot), manifest: await readProjectManifest(projectRoot), tree: await scanProjectTree(projectRoot) };
+});
+
+ipcMain.handle("project:refresh", async () => {
+  if (!projectRoot) throw new Error("No hay un proyecto abierto.");
+  return { path: projectRoot, name: path.basename(projectRoot), tree: await scanProjectTree(projectRoot) };
 });
 
 ipcMain.handle("project:open-file", async (_event, filePath) => {
@@ -413,7 +421,7 @@ ipcMain.handle("project:open-file", async (_event, filePath) => {
   const absolute = path.resolve(filePath);
   const relative = path.relative(projectRoot, absolute);
   if (relative.startsWith("..") || path.isAbsolute(relative)) throw new Error("El archivo está fuera del proyecto.");
-  if (!/\.(mgo|mgoa)$/i.test(absolute)) throw new Error("Solo se admiten archivos .mgo y .mgoa desde el explorador.");
+  if (!PROJECT_TEXT_FILE.test(absolute)) throw new Error("El tipo de archivo no está admitido en el explorador.");
   const stat = await fs.stat(absolute);
   if (!stat.isFile() || stat.size > 2 * 1024 * 1024) throw new Error("El archivo no es válido o supera 2 MB.");
   return { path: absolute, content: await fs.readFile(absolute, "utf8") };
