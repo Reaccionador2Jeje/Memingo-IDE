@@ -946,9 +946,11 @@ function showGoosePermission(event) {
   title.textContent = "Goose solicita permiso";
   const detail = document.createElement("p");
   const locationText = Array.isArray(tool.locations) ? tool.locations.map(item => item.path || "").filter(Boolean).join("\n") : "";
+  const rawInput = tool.rawInput === undefined ? "" : JSON.stringify(tool.rawInput, null, 2);
   detail.textContent = String(tool.title || "Quiere realizar una acción en el proyecto.") +
     (tool.kind ? "\nTipo: " + tool.kind : "") +
-    (locationText ? "\nArchivos:\n" + locationText : "");
+    (locationText ? "\nArchivos:\n" + locationText : "") +
+    (rawInput ? "\nDetalles de la acción:\n" + rawInput : "");
   const actions = document.createElement("div");
   actions.className = "agent-permission-actions";
   const safeOptions = options.filter(option => ["allow_once", "reject_once"].includes(option.kind));
