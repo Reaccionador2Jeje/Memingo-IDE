@@ -1,0 +1,55 @@
+name: Memingo IDE packages
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Build ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Windows
+            os: windows-latest
+            command: npm run dist:win
+            artifact: windows
+          - platform: Linux
+            os: ubuntu-latest
+            command: npm run dist:linux
+            artifact: linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate source
+        run: |
+          npm run check
+          npm test
+
+      - name: Build installers
+        run: ${{ matrix.command }}
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: memingo-ide-${{ matrix.artifact }}
+          path: release/*
+          if-no-files-found: error
+          retention-days: 14
