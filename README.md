@@ -141,15 +141,15 @@ Memingo IDE incluye un panel de agentes con dos motores de código abierto selec
 
 #### Arquitectura extensible de agentes
 
-Los motores y perfiles se declaran en `src/agents/registry.js`. La interfaz no mantiene una lista independiente: consulta el registro local y genera los selectores y enlaces de documentación a partir de sus datos. El proceso principal valida cada ID contra esa lista cerrada; la interfaz nunca puede proporcionar un ejecutable o comando arbitrario.
+Los motores y perfiles se declaran en `src/agents/registry.js`. Los contratos de transporte se definen en `src/agents/adapter-contract.js`, que declara las operaciones admitidas por HTTP y ACP (`connect`, `send`, `permission`, `stop` y `disconnect`). El proceso principal comprueba que cada operación esté permitida por el protocolo del motor antes de ejecutarla. La interfaz consulta ambos registros y solo muestra motores cuyo protocolo tiene un adaptador declarado; nunca puede proporcionar un ejecutable o comando arbitrario.
 
 Para incorporar otro motor:
 1. Añade sus metadatos y un ID fijo a `AGENT_ENGINES`.
 2. Implementa su adaptador en el proceso principal (conectar, enviar, detener, desconectar y normalizar eventos/permisos).
-3. Enruta por su protocolo registrado y conserva la validación del motor y del perfil.
-4. Añade pruebas de protocolo y permisos antes de habilitarlo en una versión publicada.
+3. Implementa el adaptador de transporte respetando el contrato de operaciones y normaliza eventos y permisos.
+4. Registra el protocolo si es nuevo y añade pruebas del contrato, del transporte y de permisos antes de habilitarlo en una versión publicada.
 
-El registro actual admite adaptadores HTTP y ACP. Añadir una entrada al registro por sí sola no integra un motor: también necesita su adaptador funcional. No se cargan plugins ejecutables de terceros ni comandos externos desde la interfaz. Para comprobar el registro y la sintaxis del proyecto, ejecuta `npm test` y `npm run check`.
+El contrato actual declara adaptadores HTTP y ACP. Añadir un protocolo al contrato o una entrada al registro por sí solo no integra un motor: también necesita una implementación de transporte funcional. No se cargan plugins ejecutables de terceros ni comandos externos desde la interfaz. Las pruebas `tests/agent-adapters.test.js` verifican las operaciones permitidas y el rechazo de protocolos y acciones desconocidos.
 
 #### Requisitos del agente
 
