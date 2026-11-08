@@ -59,6 +59,14 @@
           <button class="outline" data-git="githubPublish">Publicar privado</button>
         </div>
         <input id="gitCommitMessage" class="git-commit-message" maxlength="200" placeholder="Mensaje del commit…" aria-label="Mensaje del commit">
+        <div class="source-control-head"><strong>RAMAS</strong><button id="refreshGitBranches" class="outline">Actualizar</button></div>
+        <div id="gitCurrentBranch" class="git-current-branch">Rama actual: —</div>
+        <div id="gitBranches" class="git-branches"><div class="git-empty">Carga las ramas del repositorio.</div></div>
+        <div class="git-branch-create"><input id="gitNewBranchName" maxlength="100" placeholder="Nueva rama…"><button id="createGitBranch" class="outline">Crear</button></div>
+        <div class="git-branch-merge"><select id="gitMergeBranch" aria-label="Rama para fusionar"><option value="">Selecciona rama</option></select><button id="mergeGitBranch" class="outline">Fusionar</button></div>
+        <div class="source-control-head"><strong>CONFLICTOS</strong><button id="refreshGitConflicts" class="outline">Actualizar</button></div>
+        <div id="gitConflicts" class="git-conflicts"><div class="git-empty">No hay conflictos cargados.</div></div>
+        <div id="gitConflictEditor" class="git-conflict-editor" hidden><div id="gitConflictPath" class="git-conflict-path"></div><textarea id="gitConflictContent" spellcheck="false" aria-label="Contenido para resolver conflicto"></textarea><div class="git-conflict-actions"><button id="saveGitConflict" class="outline">Guardar resolución</button><button id="stageGitConflict" class="outline">Marcar resuelto</button></div></div>
       </section>
       <div class="help-card"><span class="help-dot"></span><strong>Memingo Runtime</strong><p>Para ejecutar código necesitas tener Memingo instalado y disponible en PATH.</p><a href="https://github.com/Reaccionador2Jeje/Memingo">Ver runtime ↗</a></div>
     </aside>
