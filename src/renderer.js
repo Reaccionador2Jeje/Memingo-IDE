@@ -956,7 +956,7 @@ function showGoosePermission(event) {
   function reply(optionId, cancelled = false) {
     return window.memingoIDE.answerAgentPermission({
       engine: "goose", id: event.requestId,
-      optionId: optionId || (cancelled ? "cancelled" : "")
+      optionId: optionId || "", cancelled
     }).then(() => {
       agentPermission.hidden = true;
       addAgentMessage("system", cancelled ? "Solicitud de Goose cancelada." : "Decisión enviada a Goose.");
