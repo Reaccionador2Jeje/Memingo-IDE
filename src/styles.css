@@ -39,3 +39,5 @@ textarea::selection{background:rgba(126,150,210,.35);-webkit-text-fill-color:tra
 .completion-item.chosen,.completion-item:hover{background:#343746}
 .problem-item{display:block;width:100%;padding:7px 9px;text-align:left;background:transparent;color:#ffaaaa;font:11px "JetBrains Mono",Consolas,monospace}
 .problem-item:hover{background:#29232a}
+
+.tok-builtin{color:#82aaff}
