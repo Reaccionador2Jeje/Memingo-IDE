@@ -1059,6 +1059,55 @@ function handleAgentEvent(event) {
   }
 }
 window.memingoIDE.onAgentEvent(handleAgentEvent);
+
+let agentRegistry = { engines: [], profiles: [] };
+async function loadAgentRegistry() {
+  const engineSelect = document.getElementById("agentEngine");
+  const profileSelect = document.getElementById("agentProfile");
+  try {
+    const registry = await window.memingoIDE.listAgentEngines();
+    agentRegistry = {
+      engines: Array.isArray(registry.engines) ? registry.engines : [],
+      profiles: Array.isArray(registry.profiles) ? registry.profiles : []
+    };
+    if (agentRegistry.engines.length) {
+      const selected = engineSelect.value;
+      engineSelect.replaceChildren();
+      for (const engine of agentRegistry.engines) {
+        const option = document.createElement("option");
+        option.value = engine.id;
+        option.textContent = engine.name + " · " + engine.license;
+        option.dataset.protocol = engine.protocol;
+        engineSelect.appendChild(option);
+      }
+      if (agentRegistry.engines.some(engine => engine.id === selected)) engineSelect.value = selected;
+      updateAgentEngineDocs();
+    }
+    if (agentRegistry.profiles.length) {
+      const selected = profileSelect.value;
+      profileSelect.replaceChildren();
+      for (const profile of agentRegistry.profiles) {
+        const option = document.createElement("option");
+        option.value = profile.id;
+        option.textContent = profile.label + " · " + profile.description;
+        profileSelect.appendChild(option);
+      }
+      if (agentRegistry.profiles.some(profile => profile.id === selected)) profileSelect.value = selected;
+    }
+  } catch (error) {
+    addAgentMessage("system", "No se pudo cargar el registro de agentes: " + error.message);
+  }
+}
+function updateAgentEngineDocs() {
+  const engine = agentRegistry.engines.find(item => item.id === document.getElementById("agentEngine").value);
+  const link = document.getElementById("agentEngineDocs");
+  if (!engine || !link) return;
+  link.href = engine.docs;
+  link.textContent = engine.name + ": instalación y documentación ↗";
+}
+document.getElementById("agentEngine").addEventListener("change", updateAgentEngineDocs);
+loadAgentRegistry();
+
 async function connectAgent() {
   if (!projectPath) {
     addAgentMessage("system", "Primero abre una carpeta de proyecto.");
@@ -1072,12 +1121,14 @@ async function connectAgent() {
   const button = document.getElementById("connectAgent");
   button.disabled = true; button.textContent = "Conectando…";
   const engine = document.getElementById("agentEngine").value;
+  const engineInfo = agentRegistry.engines.find(item => item.id === engine);
+  if (!engineInfo) { addAgentMessage("system", "El motor seleccionado no está registrado."); return; }
   activeAgentEngine = engine;
-  document.getElementById("agentStatus").textContent = "Iniciando " + (engine === "goose" ? "Goose…" : "OpenCode…");
+  document.getElementById("agentStatus").textContent = "Iniciando " + engineInfo.name + "…";
   try {
     await window.memingoIDE.connectAgent({engine});
-    setAgentConnection(true, "Conectado · " + (engine === "goose" ? "Goose ACP" : "OpenCode"));
-    addAgentMessage("system", (engine === "goose" ? "Goose" : "OpenCode") + " está listo. Elige un perfil y describe lo que quieres crear.");
+    setAgentConnection(true, "Conectado · " + engineInfo.name);
+    addAgentMessage("system", engineInfo.name + " está listo. Elige un perfil y describe lo que quieres crear.");
   } catch (error) {
     setAgentConnection(false, error.message);
     addAgentMessage("system", error.message);
