@@ -571,9 +571,9 @@ function locationParts(location){const uri=location?.targetUri||location?.uri,ra
 async function navigateLspLocation(location){
  const part=locationParts(location);if(!part)return;let targetPath="";
  try{const url=new URL(part.uri);if(url.protocol!=="file:")throw new Error();targetPath=decodeURIComponent(url.pathname);if(targetPath.startsWith("/") && targetPath.charAt(2)===":")targetPath=targetPath.slice(1);}catch{log("La ubicación LSP no es un archivo local.","hint-line");return;}
- const tab=activeTab();if(!projectPath||!tab?.path||!(targetPath===tab.path||targetPath.startsWith(projectPath.replace(/[\\/]+$/,"")+"/")||targetPath.startsWith(projectPath.replace(/[\\/]+$/,"")+"\\"))){log("La definición está fuera del proyecto abierto: "+targetPath,"hint-line");return;}
- if(targetPath!==tab.path){try{const file=await window.memingoIDE.openProjectFile(targetPath);if(file)addTab(file);}catch(error){log("No se pudo abrir el destino: "+error.message,"stderr");return;}}
- if(part.range?.start){const offset=offsetAt(part.range.start);editor.focus();editor.setSelectionRange(offset,offset);}
+ const tab=activeTab(),normalizedTarget=targetPath.replace(/\\\\/g,"/").toLowerCase(),normalizedRoot=String(projectPath||"").replace(/\\\\/g,"/").replace(/\\/+$/,"").toLowerCase(),normalizedActive=String(tab?.path||"").replace(/\\\\/g,"/").toLowerCase();
+ if(!projectPath||!tab?.path||!(normalizedTarget===normalizedActive||normalizedTarget.startsWith(normalizedRoot+"/"))){log("La definición está fuera del proyecto abierto: "+targetPath,"hint-line");return;}
+ if(normalizedTarget!==normalizedActive){ if(part.range?.start){const offset=offsetAt(part.range.start);editor.focus();editor.setSelectionRange(offset,offset);}
 }
 async function lspHover(){if(!activeLspKey)return log("No hay un servidor LSP activo.","hint-line");try{const result=await window.memingoIDE.requestLspHover({position:editorPosition()});log(result?.contents||"Sin información para este símbolo.", "hint-line");}catch(error){log("Hover: "+error.message,"stderr");}}
 async function lspDefinition(){if(!activeLspKey)return log("No hay un servidor LSP activo.","hint-line");try{const result=await window.memingoIDE.requestLspDefinition({position:editorPosition()}),location=Array.isArray(result)?result[0]:result;if(!location)return log("No se encontró una definición.","hint-line");await navigateLspLocation(location);}catch(error){log("Definición: "+error.message,"stderr");}}
