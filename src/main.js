@@ -75,7 +75,7 @@ async function ensureAgentPermissions(root) {
   const permission = {
     ...(config.permission && typeof config.permission === "object" && !Array.isArray(config.permission) ? config.permission : {}),
     "*": "ask",
-    read: "allow",
+    read: { "*": "allow", "*.env": "ask", "*.env.*": "ask", "*.env.example": "allow" },
     glob: "allow",
     grep: "allow",
     list: "allow",
@@ -357,6 +357,9 @@ async function readProjectManifest(root) {
 ipcMain.handle("project:open", async () => {
   const result = await dialog.showOpenDialog(mainWindow, { properties: ["openDirectory"] });
   if (result.canceled || !result.filePaths[0]) return null;
+  if (agentEventAbort) { agentEventAbort.abort(); agentEventAbort = null; }
+  if (agentProcess) { const previousAgent = agentProcess; agentProcess = null; previousAgent.kill(); }
+  agentPort = null; agentSessionId = null;
   projectRoot = path.resolve(result.filePaths[0]);
   async function scan(directory, depth = 0) {
     if (depth > 5) return [];
