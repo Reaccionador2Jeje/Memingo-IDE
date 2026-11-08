@@ -124,8 +124,8 @@ function syncActiveToTab() {
   tab.content = editor.value;
   tab.dirty = tab.content !== tab.savedContent;
 }
-function switchTab(id) {
-  syncActiveToTab();
+function switchTab(id, saveCurrent = true) {
+  if (saveCurrent) syncActiveToTab();
   const tab = tabs.find(item => item.id === id);
   if (!tab) return;
   activeTabId = id;
@@ -143,7 +143,7 @@ function addTab(file) {
   const id = makeId();
   tabs.push({id,path:file.path || null,name:file.path ? basename(file.path) : (file.name || "Sin título.mgo"),content:file.content || "",savedContent:file.content || "",dirty:false});
   activeTabId = id;
-  switchTab(id);
+  switchTab(id, false);
 }
 function closeTab(id) {
   const tab = tabs.find(item => item.id === id);
