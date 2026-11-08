@@ -7,7 +7,7 @@
     "start": "electron .",
     "dev": "electron .",
     "dist": "electron-builder",
-    "check": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js && node --check src/agents/registry.js && node --check src/agents/adapter-contract.js && node --check tests/agents-registry.test.js && node --check tests/agent-adapters.test.js",
+    "check": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js && node --check src/languages/registry.js && node --check tests/language-registry.test.js && node --check src/agents/registry.js && node --check src/agents/adapter-contract.js && node --check tests/agents-registry.test.js && node --check tests/agent-adapters.test.js",
     "test": "node --test"
   },
   "devDependencies": {
