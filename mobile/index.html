@@ -10,14 +10,26 @@
 </head>
 <body>
   <header><div class="brand"><span class="logo">M</span><span>memingo <small>IDE mobile</small></span></div><span id="saveState">Guardado local</span></header>
-  <nav>
+  <nav class="toolbar">
     <button id="newFile">Nuevo</button><button id="openFile">Abrir</button><button id="saveFile">Guardar</button><button id="exportFile">Exportar</button>
+    <button id="findButton">Buscar</button><button id="replaceButton">Reemplazar</button><button id="checkButton">Revisar</button>
     <input id="filePicker" type="file" accept=".mgo,.mgoa,.txt,.js,.ts,.py,.html,.css,.json,.md" hidden>
   </nav>
+  <div id="tabs" class="tabs" role="tablist" aria-label="Archivos abiertos"></div>
   <main>
-    <div class="filebar"><input id="fileName" value="main.mgo" aria-label="Nombre del archivo"><select id="language"><option value="memingo">Memingo</option><option value="javascript">JavaScript</option><option value="python">Python</option><option value="html">HTML</option><option value="css">CSS</option><option value="json">JSON</option><option value="text">Texto</option></select></div>
-    <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Editor de código" placeholder="# Escribe código aquí..."></textarea>
-    <section class="help"><strong>Edición móvil</strong><p>Esta edición permite crear, editar, guardar localmente e importar/exportar archivos. Las funciones de ejecución Memingo, Git, agentes y LSP de escritorio todavía no están disponibles en Android.</p></section>
+    <div class="filebar"><input id="fileName" value="main.mgo" aria-label="Nombre del archivo"><select id="language" aria-label="Lenguaje"><option value="memingo">Memingo</option><option value="javascript">JavaScript</option><option value="typescript">TypeScript</option><option value="python">Python</option><option value="html">HTML</option><option value="css">CSS</option><option value="json">JSON</option><option value="text">Texto</option></select></div>
+    <section id="searchPanel" class="search-panel" hidden>
+      <input id="searchInput" placeholder="Buscar texto" aria-label="Buscar texto">
+      <input id="replaceInput" placeholder="Reemplazar por" aria-label="Reemplazar por">
+      <button id="findNext">Siguiente</button><button id="replaceOne">Reemplazar</button><button id="replaceAll">Todo</button><button id="closeSearch" aria-label="Cerrar búsqueda">×</button>
+    </section>
+    <div class="editor-wrap">
+      <div id="gutter" aria-hidden="true">1</div>
+      <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Editor de código" placeholder="# Escribe código aquí..."></textarea>
+    </div>
+    <footer class="statusbar"><span id="cursorStatus">Línea 1 · Columna 1</span><span id="diagnosticStatus">Sin revisar</span><span id="languageStatus">Memingo</span></footer>
+    <section id="diagnostics" class="panel" hidden><strong>Diagnósticos</strong><ul id="diagnosticList"></ul></section>
+    <section class="help"><strong>Memingo IDE Mobile</strong><p>Ahora incluye pestañas, borradores por archivo, búsqueda, reemplazo, atajos, sangría automática y revisión básica de delimitadores. La ejecución Memingo, Git, agentes y LSP completo todavía requieren una capa de servicios Android.</p></section>
   </main>
   <script src="mobile.js"></script>
 </body>
