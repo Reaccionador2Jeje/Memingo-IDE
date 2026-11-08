@@ -373,26 +373,38 @@ ipcMain.handle("agents:send", async (_event, payload = {}) => {
   const engine = typeof payload.engine === "string" ? payload.engine : activeAgentEngine;
   const engineDefinition = getAgentEngine(engine);
   if (!engineDefinition) throw new Error("Motor de agente no registrado.");
-  if (engineDefinition.protocol === "acp") {
-    if (!projectRoot || !gooseProcess || !gooseSessionId) throw new Error("Conecta Goose primero.");
-    const prompt = typeof payload.prompt === "string" ? payload.prompt.trim() : "";
-    const profile = typeof payload.profile === "string" ? payload.profile : "plan";
+  const prompt = typeof payload.prompt === "string" ? payload.prompt.trim() : "";
+  const profile = typeof payload.profile === "string" ? payload.profile : "plan";
   const profileDefinition = getAgentProfile(profile);
   if (!prompt || prompt.length > 8000) throw new Error("Escribe una petición de entre 1 y 8000 caracteres.");
   if (!profileDefinition) throw new Error("Perfil de agente no registrado.");
+
+  if (engineDefinition.protocol === "acp") {
+    if (!projectRoot || !gooseProcess || !gooseSessionId) throw new Error("Conecta Goose primero.");
+    gooseRequest("session/prompt", {
+      sessionId: gooseSessionId,
+      prompt: [{ type: "text", text: profileDefinition.instruction + "\n\nPetición del usuario:\n" + prompt }]
+    }, 15 * 60 * 1000)
+      .then(result => sendAgentEvent({ type: "goose.turn.finished", properties: result }))
+      .catch(error => sendAgentEvent({ type: "agent.connection.error", message: error.message, engine }));
+    return { sent: true, sessionId: gooseSessionId, engine };
+  }
+
+  if (!projectRoot || !agentPort) throw new Error("Conecta OpenCode primero.");
   if (!agentSessionId) {
     const session = await agentApiCompat("POST", "/api/session", "/session", { title: "Memingo IDE · " + profile });
     if (!session?.id) throw new Error("OpenCode no devolvió una sesión válida.");
     agentSessionId = session.id;
   }
-  const fullPrompt = profileDefinition.openCodeInstruction + "\n\nPetición del usuario:\n" + prompt + "\n\nEl usuario puede ser principiante: evita jerga innecesaria, explica cada paso y pregunta si falta información importante.";
+  const fullPrompt = profileDefinition.openCodeInstruction + "\n\nPetición del usuario:\n" + prompt +
+    "\n\nEl usuario puede ser principiante: evita jerga innecesaria, explica cada paso y pregunta si falta información importante.";
   const sessionPath = "/session/" + encodeURIComponent(agentSessionId);
   const promptBody = {
     agent: profile === "build" ? "build" : "plan",
     parts: [{ type: "text", text: fullPrompt }]
   };
   await agentApiCompat("POST", "/api" + sessionPath + "/prompt", sessionPath + "/prompt_async", promptBody);
-  return { sent: true, sessionId: agentSessionId };
+  return { sent: true, sessionId: agentSessionId, engine };
 });
 ipcMain.handle("agents:permission", async (_event, payload = {}) => {
   if (payload.engine === "goose") {
