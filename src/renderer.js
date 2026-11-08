@@ -63,9 +63,25 @@ function updateSyntax() {
   html += escapeHTML(source.slice(last));
   syntaxLayer.innerHTML = html + "\n";
 }
+let breakpoints = new Set();
+function renderGutter() {
+  const count = Math.max(1, editor.value.split("\\n").length);
+  gutter.replaceChildren();
+  for (let line = 1; line <= count; line++) {
+    const marker = document.createElement("button");
+    marker.type = "button";
+    marker.className = "gutter-line" + (breakpoints.has(line) ? " has-breakpoint" : "");
+    marker.textContent = String(line);
+    marker.title = breakpoints.has(line) ? "Quitar breakpoint en línea " + line : "Añadir breakpoint en línea " + line;
+    marker.addEventListener("click", () => {
+      if (breakpoints.has(line)) breakpoints.delete(line); else breakpoints.add(line);
+      renderGutter();
+    });
+    gutter.appendChild(marker);
+  }
+}
 function updateLines() {
-  const count = Math.max(1, editor.value.split("\n").length);
-  gutter.textContent = Array.from({length: count}, (_, i) => i + 1).join("\n");
+  renderGutter();
   gutter.scrollTop = editor.scrollTop;
   syntaxLayer.scrollTop = editor.scrollTop;
   syntaxLayer.scrollLeft = editor.scrollLeft;
@@ -436,6 +452,43 @@ async function formatFile() {
   } catch (error) { log(error.message, "stderr"); }
 }
 
+
+async function debugFile() {
+  const tab = activeTab();
+  if (!tab) return;
+  if (!tab.path || editor.value !== tab.savedContent) {
+    const saved = await saveFile();
+    if (!saved) return;
+  }
+  showConsole();
+  log("$ memingo debug " + basename(tab.path) + (breakpoints.size ? " --breakpoints " + [...breakpoints].sort((a,b)=>a-b).join(",") : ""), "hint-line");
+  runStatus.textContent = "● Depurando";
+  statusText.textContent = "Depurando…";
+  try {
+    const result = await window.memingoIDE.debug({filePath:tab.path,breakpoints:[...breakpoints]});
+    if (result.error) log(result.error,"stderr");
+    if (result.stderr) log(result.stderr,"stderr");
+    const trace = result.trace;
+    if (!trace) {
+      if (result.stdout) log(result.stdout,"stdout");
+      log("No se recibió una traza de depuración. Comprueba que el runtime Memingo esté actualizado.", "stderr");
+      return;
+    }
+    log("Traza: " + trace.events.length + " paso(s) ejecutado(s).", "hint-line");
+    for (const event of trace.events) {
+      const line = event.line ? "L" + event.line : "línea desconocida";
+      const marker = event.breakpoint ? " ◆ BREAKPOINT" : "";
+      log("Paso " + (event.index + 1) + " · " + line + " · " + event.type + marker, event.breakpoint ? "stderr" : "hint-line");
+      const variables = Object.entries(event.variables || {});
+      if (variables.length) log("  Variables: " + variables.map(([name,value])=>name+" = "+value).join(" · "), "stdout");
+    }
+    for (const value of trace.output || []) log(value, "stdout");
+    if (trace.error) log("Error: " + trace.error, "stderr");
+    else log("Depuración finalizada.", "hint-line");
+  } catch (error) { log(error.message,"stderr"); }
+  finally { runStatus.textContent = "● Inactivo"; statusText.textContent = "Listo"; }
+}
+
 const terminalForm = document.getElementById("terminalForm");
 const terminalInput = document.getElementById("terminalInput");
 let terminalBusy = false;
@@ -483,6 +536,7 @@ document.getElementById("openBtn").addEventListener("click",openFile);
 document.getElementById("sideOpen").addEventListener("click",openFile);
 document.getElementById("saveBtn").addEventListener("click",saveFile);
 document.getElementById("runBtn").addEventListener("click",runFile);
+document.getElementById("debugBtn").addEventListener("click",debugFile);
 document.getElementById("checkBtn").addEventListener("click",checkFile);
 document.getElementById("formatBtn").addEventListener("click",formatFile);
 document.getElementById("stopBtn").addEventListener("click",()=>window.memingoIDE.stop());
