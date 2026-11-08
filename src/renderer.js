@@ -561,7 +561,7 @@ function applyLspCompletion(item) {
  let start=editor.selectionStart,end=editor.selectionEnd,text=item.insertText||item.label;
  if(item.textEdit?.range){start=offsetAt(item.textEdit.range.start);end=offsetAt(item.textEdit.range.end);text=item.textEdit.newText||text;}
  else {const m=editor.value.slice(0,start).match(/[A-Za-z_$][A-Za-z0-9_$]*$/);if(m)start-=m[0].length;}
- if(item.insertTextFormat===2)text=text.replace(/\\$\\{\\d+(?::([^}]*))?\\}|\\$\\d+/g,(_,fallback)=>fallback||"");
+ if(item.insertTextFormat===2)text=text.replace(/\$\{\d+(?::([^}]*))?\}|\$\d+/g,(_,fallback)=>fallback||"");
  editor.setRangeText(text,start,end,"end");hideAutocomplete();updateLines();updateSyntax();updateDirty();sendLspDocumentChange();editor.focus();
 }
 async function requestLspCompletion(){if(!activeLspKey)return showAutocomplete(true);try{const items=await window.memingoIDE.requestLspCompletion({position:editorPosition()});if(items.length)renderLspCompletions(items);else hideAutocomplete();}catch(error){log("Autocompletado LSP: "+error.message,"hint-line");}}
