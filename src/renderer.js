@@ -649,8 +649,8 @@ async function runGitFileAction(action, filePath) {
 function renderGitHistory(raw) {
   const list = document.getElementById("gitHistory");
   list.replaceChildren();
-  const commits = raw.split(/\\r?\\n/).filter(Boolean).map(line => {
-    const parts = line.split("\\x1f");
+  const commits = raw.split(/\r?\n/).filter(Boolean).map(line => {
+    const parts = line.split("\x1f");
     return {hash:parts[0], short:parts[1], author:parts[2], date:parts[3], subject:parts.slice(4).join(" ")};
   }).filter(item => /^[a-f0-9]{40}$/i.test(item.hash));
   if (!commits.length) {
