@@ -171,3 +171,21 @@ GitHub Actions valida automáticamente cada cambio enviado a `main` y cada pull 
 - `npm test`: ejecuta las pruebas automatizadas del registro de motores y perfiles de agentes.
 
 También puedes iniciar la validación manualmente desde la pestaña **Actions** de GitHub mediante `Memingo IDE CI`.
+
+
+## Compatibilidad multilenguaje
+
+Memingo IDE incorpora un catálogo extensible de más de 80 lenguajes y familias de formatos, con más de 100 extensiones reconocidas. Incluye, entre otros:
+
+- **Web:** HTML, CSS, SCSS, JavaScript, TypeScript, JSX, TSX, Vue, Svelte y Astro.
+- **General y backend:** Python, Java, Kotlin, C, C++, C#, Go, Rust, Ruby, PHP, Swift, Dart, Lua, Perl, R y Julia.
+- **Sistemas y scripting:** Shell, PowerShell, Batch, Assembly, Zig, Nim, Haskell, Elixir, Erlang y más.
+- **Videojuegos y gráficos:** GDScript, Godot Shader, GML, GLSL, HLSL y CUDA.
+- **Datos y configuración:** JSON, JSON5, JSONC, YAML, TOML, INI, XML, CSV, GraphQL, Protocol Buffers, SQL y Terraform.
+- **Documentación y otros:** Markdown, MDX, reStructuredText, LaTeX, Diff, logs y texto plano.
+
+El catálogo se centraliza en `src/languages/registry.js`. El explorador y el diálogo de apertura usan las extensiones registradas; el editor detecta el lenguaje de la pestaña activa, actualiza la etiqueta inferior y aplica resaltado de sintaxis general. Las sugerencias de autocompletado propias de Memingo solo aparecen en archivos `.mgo` y `.mgoa`.
+
+**Alcance importante:** esta etapa habilita reconocimiento, apertura, edición, guardado y resaltado básico para los formatos registrados. No equivale todavía a soporte completo de cada ecosistema: los servidores de lenguaje (LSP), autocompletado inteligente, depuradores, formateadores, compiladores y ejecución se deben integrar por lenguaje y requieren sus herramientas externas. Los botones Ejecutar, Comprobar, Formatear y Depurar siguen reservados al runtime Memingo; otros archivos no se enviarán accidentalmente a ese runtime.
+
+Para añadir un lenguaje, registra su ID, nombre, extensiones y familia de sintaxis en `src/languages/registry.js`, y añade casos a `tests/language-registry.test.js`.
