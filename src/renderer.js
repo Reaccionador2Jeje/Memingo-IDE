@@ -264,6 +264,7 @@ async function openProject() {
       explorerRoot.appendChild(empty);
     }
     log("Proyecto abierto: " + project.path,"hint-line");
+    await refreshGitChanges();
   } catch (error) { log(error.message,"stderr"); }
 }
 async function saveFile() {
