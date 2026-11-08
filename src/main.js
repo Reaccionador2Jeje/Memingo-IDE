@@ -205,7 +205,7 @@ async function runMemingoTool(event, command, filePath) {
   if (activeProcess) throw new Error("Ya hay un proceso Memingo en ejecución.");
   const absolutePath = path.resolve(filePath);
   const stat = await fs.stat(absolutePath).catch(() => null);
-  if (!stat || !stat.isFile() || !/\\.mgo$/i.test(absolutePath)) {
+  if (!stat || !stat.isFile() || !/\.mgo$/i.test(absolutePath)) {
     throw new Error("Selecciona un archivo .mgo válido.");
   }
   return await new Promise(resolve => {
@@ -242,7 +242,7 @@ ipcMain.handle("memingo:format", (_event, filePath) => runMemingoTool(_event, "f
 
 
 ipcMain.handle("terminal:execute", async (_event, payload = {}) => {
-  const command = typeof payload.command === "string" ? payload.command.trim().replace(/\\s+/g, " ") : "";
+  const command = typeof payload.command === "string" ? payload.command.trim().replace(/\s+/g, " ") : "";
   const activeFile = typeof payload.filePath === "string" ? payload.filePath : "";
   if (!command) return { code: 0, stdout: "" };
   if (command === "help") return { code: 0, stdout: [
@@ -254,18 +254,18 @@ ipcMain.handle("terminal:execute", async (_event, payload = {}) => {
     "  memingo run    Ejecuta el archivo activo",
     "  memingo check  Comprueba el archivo activo",
     "  memingo fmt    Formatea el archivo activo"
-  ].join("\\n") };
+  ].join("\n") };
   if (command === "pwd") return { code: 0, stdout: projectRoot || "No hay un proyecto abierto." };
   if (command === "ls") {
     if (!projectRoot) return { code: 1, stderr: "Abre un proyecto primero." };
     const entries = await fs.readdir(projectRoot, { withFileTypes: true });
-    return { code: 0, stdout: entries.filter(item => !item.name.startsWith(".")).map(item => item.name + (item.isDirectory() ? "/" : "")).join("\\n") || "(carpeta vacía)" };
+    return { code: 0, stdout: entries.filter(item => !item.name.startsWith(".")).map(item => item.name + (item.isDirectory() ? "/" : "")).join("\n") || "(carpeta vacía)" };
   }
   const match = command.match(/^memingo (run|check|fmt)$/);
   if (!match) return { code: 2, stderr: "Comando no permitido. Escribe help para ver los comandos disponibles." };
   if (!activeFile) return { code: 1, stderr: "Abre o guarda un archivo .mgo antes de ejecutar este comando." };
   const absolute = path.resolve(activeFile);
-  if (!/\\.mgo$/i.test(absolute)) return { code: 1, stderr: "Solo se admiten archivos .mgo." };
+  if (!/\.mgo$/i.test(absolute)) return { code: 1, stderr: "Solo se admiten archivos .mgo." };
   if (projectRoot) {
     const relative = path.relative(projectRoot, absolute);
     if (relative.startsWith("..") || path.isAbsolute(relative)) return { code: 1, stderr: "El archivo activo está fuera del proyecto." };
