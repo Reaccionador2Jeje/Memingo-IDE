@@ -331,7 +331,7 @@ ipcMain.handle("lsp:start", async (_event, payload = {}) => {
   const result = await lspClient.start(languageId, root);
   const source = typeof payload.text === "string" ? payload.text : await fs.readFile(filePath, "utf8");
   lspClient.open(filePath, languageId, source.slice(0, 2 * 1024 * 1024));
-  return result;
+  return { ...result, uri: lspClient.document?.uri || null };
 });
 ipcMain.handle("lsp:change", async (_event, payload = {}) => {
   if (!lspClient.child || !lspClient.document) return { sent:false };
