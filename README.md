@@ -106,3 +106,8 @@ Requiere **Git** instalado y disponible en PATH. Las funciones de GitHub requier
 El panel de control de versiones también muestra los archivos modificados y sin seguimiento mediante `git status --porcelain`. Puedes actualizar la lista, abrir las diferencias de un archivo y preparar o quitar del staging cada archivo individualmente. El visor combina las diferencias preparadas y las que siguen en el directorio de trabajo. Las rutas se validan para impedir que las operaciones por archivo salgan de la carpeta del proyecto.
 
 Esta vista se actualiza al abrir un proyecto y después de inicializar, preparar, confirmar o sincronizar cambios.
+
+
+### Historial visual de Git
+
+El panel muestra hasta 30 commits recientes con hash corto, autor, fecha y mensaje. Al seleccionar uno, consulta su resumen y lista de archivos modificados. Puedes seleccionar un archivo para ver el diff correspondiente a ese commit en el visor. Las consultas usan hashes completos validados y argumentos Git separados (sin shell).
