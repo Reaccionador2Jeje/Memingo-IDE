@@ -39,7 +39,12 @@
   </main>
   <section class="terminal">
     <div class="terminal-head"><div class="terminal-tabs"><button id="consoleTab" class="selected">CONSOLA</button><button id="problemsTab">PROBLEMAS</button></div><div class="terminal-tools"><span id="runStatus">● Inactivo</span><button id="stopBtn" title="Detener">■</button><button id="clearOutput">⌫</button></div></div>
-    <div id="output" class="output"><div class="welcome-line">Memingo IDE Terminal <span>—</span> Lista para ejecutar tus programas.</div><div class="hint-line">Pulsa <kbd>Ctrl</kbd> + <kbd>Enter</kbd> para ejecutar el archivo actual.</div></div>
+    <div id="output" class="output"><div class="welcome-line">Memingo IDE Terminal <span>—</span> Lista para ejecutar tus programas.</div><div class="hint-line">Escribe help para ver los comandos disponibles. No ejecuta comandos arbitrarios del sistema.</div></div>
+    <form id="terminalForm" class="terminal-input-row">
+      <span class="terminal-prompt">›</span>
+      <input id="terminalInput" type="text" autocomplete="off" spellcheck="false" placeholder="Escribe un comando..." aria-label="Comando de terminal">
+      <button type="submit" class="terminal-send">Ejecutar</button>
+    </form>
   </section>
   <script src="renderer.js"></script>
 </body>
