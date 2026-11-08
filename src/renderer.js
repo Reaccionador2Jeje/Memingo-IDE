@@ -37,6 +37,9 @@ let languageRegistry = [];
 let languageServerRegistry = [];
 let activeLspKey = null;
 let lspChangeTimer = null;
+let lspCompletionTimer = null;
+let lspCompletionMode = false;
+let lspDiagnostics = [];
 let languageOverrides = new Map();
 let suggestionIndex = 0;
 let outputMode = "console";
@@ -512,7 +515,7 @@ function showConsole() {
   document.getElementById("problemsTab").classList.remove("selected");
   renderOutput();
 }
-function hideAutocomplete() { autocomplete.hidden = true; suggestionItems = []; }
+function hideAutocomplete() { autocomplete.hidden = true; suggestionItems = []; lspCompletionMode = false; }
 function applySuggestion(item) {
   const start = editor.selectionStart;
   const before = editor.value.slice(0,start);
@@ -544,6 +547,65 @@ function showAutocomplete(force = false) {
     autocomplete.appendChild(button);
   }
   autocomplete.hidden = false;
+}
+function editorPosition() {
+ const before=editor.value.slice(0,editor.selectionStart);
+ return {line:before.split("\\n").length-1,character:before.length-before.lastIndexOf("\\n")-1};
+}
+function offsetAt(position,source=editor.value) {
+ const lines=source.split("\\n"),line=Math.max(0,Math.min(Number(position?.line)||0,lines.length-1));
+ let offset=0;for(let i=0;i<line;i++)offset+=lines[i].length+1;
+ return offset+Math.max(0,Math.min(Number(position?.character)||0,lines[line].length));
+}
+function renderLspCompletions(items) {
+ suggestionItems=items;lspCompletionMode=true;suggestionIndex=0;autocomplete.replaceChildren();
+ for(let i=0;i<items.length;i++){const item=items[i],button=document.createElement("button");button.type="button";button.className="completion-item"+(i===0?" chosen":"");const name=document.createElement("strong"),detail=document.createElement("span");name.textContent=item.label;detail.textContent=item.detail||"LSP";button.append(name,detail);button.addEventListener("mousedown",e=>{e.preventDefault();applyLspCompletion(item);});autocomplete.appendChild(button);}
+ autocomplete.hidden=!items.length;
+}
+function applyLspCompletion(item) {
+ let start=editor.selectionStart,end=editor.selectionEnd,text=item.insertText||item.label;
+ if(item.textEdit?.range){start=offsetAt(item.textEdit.range.start);end=offsetAt(item.textEdit.range.end);text=item.textEdit.newText||text;}
+ else {const m=editor.value.slice(0,start).match(/[A-Za-z_$][A-Za-z0-9_$]*$/);if(m)start-=m[0].length;}
+ if(item.insertTextFormat===2)text=text.replace(/\\$\\{\\d+(?::([^}]*))?\\}|\\$\\d+/g,(_,fallback)=>fallback||"");
+ editor.setRangeText(text,start,end,"end");hideAutocomplete();updateLines();updateSyntax();updateDirty();sendLspDocumentChange();editor.focus();
+}
+async function requestLspCompletion(){if(!activeLspKey)return showAutocomplete(true);try{const items=await window.memingoIDE.requestLspCompletion({position:editorPosition()});if(items.length)renderLspCompletions(items);else hideAutocomplete();}catch(error){log("Autocompletado LSP: "+error.message,"hint-line");}}
+function scheduleLspCompletion(){if(!activeLspKey||currentLanguageInfo().id==="memingo")return;clearTimeout(lspCompletionTimer);lspCompletionTimer=setTimeout(requestLspCompletion,450);}
+function locationParts(location){const uri=location?.targetUri||location?.uri,range=location?.targetSelectionRange||location?.targetRange||location?.range;return uri?{uri,range}:null;}
+async function navigateLspLocation(location){
+ const part=locationParts(location);if(!part)return;let targetPath="";
+ try{const url=new URL(part.uri);if(url.protocol!=="file:")throw new Error();targetPath=decodeURIComponent(url.pathname);if(/^\\/[A-Za-z]:\\//.test(targetPath))targetPath=targetPath.slice(1);}catch{log("La ubicación LSP no es un archivo local.","hint-line");return;}
+ const tab=activeTab();if(!projectPath||!tab?.path||!(targetPath===tab.path||targetPath.startsWith(projectPath.replace(/[\\/]+$/,"")+"/")||targetPath.startsWith(projectPath.replace(/[\\/]+$/,"")+"\\"))){log("La definición está fuera del proyecto abierto: "+targetPath,"hint-line");return;}
+ if(targetPath!==tab.path){try{const file=await window.memingoIDE.openProjectFile(targetPath);if(file)addTab(file);}catch(error){log("No se pudo abrir el destino: "+error.message,"stderr");return;}}
+ if(part.range?.start){const offset=offsetAt(part.range.start);editor.focus();editor.setSelectionRange(offset,offset);}
+}
+async function lspHover(){if(!activeLspKey)return log("No hay un servidor LSP activo.","hint-line");try{const result=await window.memingoIDE.requestLspHover({position:editorPosition()});log(result?.contents||"Sin información para este símbolo.", "hint-line");}catch(error){log("Hover: "+error.message,"stderr");}}
+async function lspDefinition(){if(!activeLspKey)return log("No hay un servidor LSP activo.","hint-line");try{const result=await window.memingoIDE.requestLspDefinition({position:editorPosition()}),location=Array.isArray(result)?result[0]:result;if(!location)return log("No se encontró una definición.","hint-line");await navigateLspLocation(location);}catch(error){log("Definición: "+error.message,"stderr");}}
+async function lspReferences(){if(!activeLspKey)return log("No hay un servidor LSP activo.","hint-line");try{const result=await window.memingoIDE.requestLspReferences({position:editorPosition()}),items=Array.isArray(result)?result.slice(0,30):[];if(!items.length)return log("No se encontraron referencias.","hint-line");log("Referencias encontradas: "+items.length,"hint-line");for(const location of items){const part=locationParts(location),button=document.createElement("button");button.type="button";button.className="problem-item";button.textContent=(part?.uri?.split("/").pop()||"archivo")+":"+(part?.range?.start?.line+1||1);button.addEventListener("click",()=>navigateLspLocation(location));output.appendChild(button);}}catch(error){log("Referencias: "+error.message,"stderr");}}
+function applyCurrentWorkspaceEdit(edit){
+ const tab=activeTab();if(!tab?.path||!edit)return false;const uri=new URL("file://"+tab.path).href;
+ let edits=edit.changes?.[uri]||[];if(!edits.length&&Array.isArray(edit.documentChanges)){const entry=edit.documentChanges.find(item=>item.textDocument?.uri===uri);edits=entry?.edits||[];}
+ if(!Array.isArray(edits)||!edits.length)return false;
+ const prepared=edits.map(item=>({start:offsetAt(item.range.start),end:offsetAt(item.range.end),text:String(item.newText??"")})).sort((a,b)=>b.start-a.start);
+ for(let i=1;i<prepared.length;i++)if(prepared[i-1].start<prepared[i].end)throw new Error("Cambios superpuestos devueltos por LSP.");
+ let source=editor.value;for(const item of prepared)source=source.slice(0,item.start)+item.text+source.slice(item.end);
+ editor.value=source;syncActiveToTab();updateLines();updateSyntax();updateDirty();sendLspDocumentChange();return true;
+}
+async function lspRename(){
+ if(!activeLspKey)return log("No hay un servidor LSP activo.","hint-line");
+ const newName=window.prompt("Escribe el nuevo nombre del símbolo:");if(newName===null)return;
+ try{const edit=await window.memingoIDE.requestLspRename({position:editorPosition(),newName});if(!edit)return log("No hay cambios para renombrar.","hint-line");if(applyCurrentWorkspaceEdit(edit))log("Renombrado aplicado al archivo actual. Guarda con Ctrl+S.","hint-line");else log("No hay ediciones para el archivo actual.","hint-line");if(Object.keys(edit.changes||{}).length>1||(edit.documentChanges||[]).length>1)log("Aviso: otros archivos también requieren cambios; esta versión solo aplica el archivo activo.","hint-line");}catch(error){log("Renombrar: "+error.message,"stderr");}
+}
+async function lspCodeActions(){
+ if(!activeLspKey)return log("No hay un servidor LSP activo.","hint-line");
+ try{
+  const pos=offset=>{const before=editor.value.slice(0,offset);return{line:before.split("\\n").length-1,character:before.length-before.lastIndexOf("\\n")-1};};
+  const actions=await window.memingoIDE.requestLspCodeActions({range:{start:pos(editor.selectionStart),end:pos(editor.selectionEnd)},diagnostics:lspDiagnostics});
+  if(!actions.length)return log("No hay acciones rápidas en esta posición.","hint-line");
+  suggestionItems=actions.map(action=>({label:action.title,detail:action.kind||"Acción rápida",action}));lspCompletionMode=true;suggestionIndex=0;autocomplete.replaceChildren();
+  for(let i=0;i<suggestionItems.length;i++){const item=suggestionItems[i],button=document.createElement("button");button.type="button";button.className="completion-item"+(i===0?" chosen":"");const name=document.createElement("strong"),detail=document.createElement("span");name.textContent=item.label;detail.textContent=item.detail;button.append(name,detail);button.addEventListener("mousedown",e=>{e.preventDefault();hideAutocomplete();try{if(item.action.edit&&applyCurrentWorkspaceEdit(item.action.edit))log("Acción aplicada al archivo actual. Guarda con Ctrl+S.","hint-line");else log("Esta acción requiere soporte adicional o modifica otros archivos.","hint-line");}catch(error){log(error.message,"stderr");}});autocomplete.appendChild(button);}
+  autocomplete.hidden=false;
+ }catch(error){log("Acciones rápidas: "+error.message,"stderr");}
 }
 function moveSuggestion(delta) {
   if (autocomplete.hidden) return;
