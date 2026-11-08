@@ -319,8 +319,41 @@ async function runMemingoDebug(event, filePath, breakpoints = []) {
 ipcMain.handle("memingo:debug", (event, payload) => runMemingoDebug(event, payload?.filePath, payload?.breakpoints));
 
 
+async function runGitFileAction(action, relativePath = "") {
+  if (!projectRoot) throw new Error("Abre un proyecto antes de usar Git.");
+  if (typeof relativePath !== "string" || !relativePath || path.isAbsolute(relativePath)) throw new Error("Selecciona un archivo válido del proyecto.");
+  const root = path.resolve(projectRoot);
+  const target = path.resolve(root, relativePath);
+  const relative = path.relative(root, target);
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) throw new Error("La ruta del archivo sale del proyecto.");
+  const stat = await fs.lstat(target).catch(() => null);
+  if (!stat || !stat.isFile() || stat.isSymbolicLink()) throw new Error("El archivo ya no existe o no es válido.");
+  let args;
+  if (action === "fileDiff") args = ["diff", "--no-ext-diff", "--no-color", "HEAD", "--", relative];
+  else if (action === "stageFile") args = ["add", "--", relative];
+  else if (action === "unstageFile") {
+    const tracked = await runGitProcess(root, "git", ["ls-files", "--error-unmatch", "--", relative]);
+    args = tracked.code === 0 ? ["reset", "-q", "HEAD", "--", relative] : ["rm", "--cached", "--", relative];
+  } else throw new Error("Acción de archivo Git no permitida.");
+  return runGitProcess(root, "git", args);
+}
+
+function runGitProcess(root, executable, args) {
+  return new Promise(resolve => {
+    const child = spawn(executable, args, { cwd: root, windowsHide: true, env: process.env, shell: false });
+    let stdout = "", stderr = "", settled = false;
+    const append = (current, data) => (current + data.toString()).slice(-1024 * 1024);
+    const finish = result => { if (settled) return; settled = true; resolve(result); };
+    child.stdout.on("data", data => { stdout = append(stdout, data); });
+    child.stderr.on("data", data => { stderr = append(stderr, data); });
+    child.on("error", error => finish({ code: -1, stdout, stderr, error: error.code === "ENOENT" ? "Git no está instalado o no está disponible en PATH." : error.message }));
+    child.on("close", code => finish({ code: code ?? -1, stdout, stderr }));
+  });
+}
+
 const GIT_ACTIONS = {
   status: ["git", ["status", "--short", "--branch"]],
+  changes: ["git", ["status", "--porcelain=v1", "-uall"]],
   diff: ["git", ["diff", "--"]],
   log: ["git", ["log", "-5", "--oneline", "--decorate"]],
   branch: ["git", ["branch", "--show-current"]],
@@ -371,6 +404,12 @@ async function runVersionControl(action, message = "") {
     child.on("close", code => finish({ code: code ?? -1, stdout, stderr }));
   });
 }
+
+ipcMain.handle("vcs:file", async (_event, payload = {}) => {
+  const action = typeof payload.action === "string" ? payload.action : "";
+  const filePath = typeof payload.path === "string" ? payload.path : "";
+  return runGitFileAction(action, filePath);
+});
 
 ipcMain.handle("vcs:execute", async (_event, payload = {}) => {
   const action = typeof payload.action === "string" ? payload.action : "";
