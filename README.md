@@ -44,12 +44,14 @@ npm run dist:win
 npm run dist:linux
 ```
 
+Los builds locales no intentan publicar automáticamente en GitHub (`--publish never`). El paquete Linux de CI genera AppImage; se omite DEB hasta configurar un mantenedor con correo válido.
+
 Generated files are written to `release/`.
 
 - Windows: NSIS installer (`.exe`)
-- Linux: AppImage and DEB packages
+- Linux: AppImage (portable; no maintainer email required)
 
-GitHub Actions also builds Windows and Linux packages when you manually run **Memingo IDE packages** or push a version tag such as `v0.2.0`. Download the resulting ZIP artifacts from the workflow run (available for 14 days).
+GitHub Actions also builds the Windows NSIS installer and Linux AppImage when you manually run **Memingo IDE packages** or push a version tag such as `v0.2.0`. Download the resulting ZIP artifacts from the workflow run (available for 14 days).
 
 **Android:** this Electron desktop application cannot be packaged directly as an APK. An Android edition requires a separate mobile adaptation of the renderer and replacement of Electron-only file, process, Git, terminal and LSP integrations with Android-compatible services. No Android APK is published by this workflow yet.
 
