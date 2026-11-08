@@ -88,3 +88,14 @@ La terminal acepta únicamente comandos incorporados y acciones del runtime Memi
 ## Depurador
 
 El botón **Depurar** ejecuta el comando `memingo debug` del runtime y muestra una traza por sentencia, con número de línea, tipo de sentencia y variables visibles. Haz clic en los números del margen del editor para marcar o quitar breakpoints; las líneas marcadas se destacan en la traza. Esta primera versión recopila la ejecución completa y señala los breakpoints, pero todavía no pausa el programa para avanzar manualmente.
+
+
+## Git y GitHub integrados
+
+El panel **Control de versiones** trabaja sobre la carpeta de proyecto abierta e incluye:
+- Estado (git status), cambios (git diff), historial reciente y rama actual.
+- Preparar los cambios (git add -A) y crear commits con mensaje.
+- Sincronizar con el remoto configurado mediante git pull --ff-only y git push.
+- Comprobar la sesión de GitHub CLI (gh auth status) y consultar el repositorio remoto (gh repo view).
+
+Requiere **Git** instalado y disponible en PATH. Las funciones de GitHub requieren además **GitHub CLI (gh)** instalado y autenticado previamente con gh auth login. La IDE no solicita ni almacena contraseñas o tokens. Pull y Push solo se ejecutan cuando pulsas sus botones. No se permite introducir comandos de terminal arbitrarios.
