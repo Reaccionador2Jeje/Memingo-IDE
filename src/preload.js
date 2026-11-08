@@ -25,6 +25,12 @@ contextBridge.exposeInMainWorld("memingoIDE", {
   listLanguageServers: () => ipcRenderer.invoke("lsp:servers"),
   startLanguageServer: payload => ipcRenderer.invoke("lsp:start", payload),
   changeLanguageDocument: payload => ipcRenderer.invoke("lsp:change", payload),
+  requestLspCompletion: payload => ipcRenderer.invoke("lsp:completion", payload),
+  requestLspHover: payload => ipcRenderer.invoke("lsp:hover", payload),
+  requestLspDefinition: payload => ipcRenderer.invoke("lsp:definition", payload),
+  requestLspReferences: payload => ipcRenderer.invoke("lsp:references", payload),
+  requestLspRename: payload => ipcRenderer.invoke("lsp:rename", payload),
+  requestLspCodeActions: payload => ipcRenderer.invoke("lsp:code-action", payload),
   stopLanguageServer: () => ipcRenderer.invoke("lsp:stop"),
   onLspEvent: callback => {
     const listener = (_event, data) => callback(data);
