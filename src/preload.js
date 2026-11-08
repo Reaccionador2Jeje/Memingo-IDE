@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld("memingoIDE", {
   format: filePath => ipcRenderer.invoke("memingo:format", filePath),
   debug: payload => ipcRenderer.invoke("memingo:debug", payload),
   terminalExecute: payload => ipcRenderer.invoke("terminal:execute", payload),
+  versionControl: payload => ipcRenderer.invoke("vcs:execute", payload),
   stop: () => ipcRenderer.invoke("memingo:stop"),
   onOutput: callback => {
     const listener = (_event, data) => callback(data);
