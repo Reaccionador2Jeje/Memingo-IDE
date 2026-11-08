@@ -19,3 +19,23 @@ textarea::selection{background:rgba(126,150,210,.35);-webkit-text-fill-color:tra
 .empty-explorer .outline{margin:4px}
 @media(max-width:1050px){.side-panel{width:210px}}
 @media(max-width:760px){.side-panel{display:none}.titlebar{padding:0 9px}.brand{font-size:13px}.top-actions{gap:2px}.quiet{padding:7px}.run{padding:8px 10px}.activity{width:40px}}
+
+/* Pestañas múltiples */
+.tabs{display:flex;align-items:stretch;min-width:0;height:100%;overflow-x:auto;flex:1}
+.tab{height:100%;display:flex;align-items:center;gap:8px;padding:0 9px 0 13px;border-right:1px solid #292a34;border-top:2px solid transparent;flex:none;max-width:210px}
+.tab.active-tab{background:#101116;border-top-color:#a6e36b}
+.tab-open{background:transparent;color:#aeb1bd;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:155px}
+.active-tab .tab-open{color:#f0f1f5}
+.tab-dirty{width:7px;height:7px;flex:none;border-radius:50%;background:#e9bd62}
+.tab-close{width:19px;height:19px;flex:none;border-radius:4px;background:transparent;color:#777b8a;font-size:16px;line-height:15px}
+.tab-close:hover{background:#343642;color:white}
+.path-label{max-width:30%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:none}
+/* Autocompletado */
+.autocomplete{position:absolute;z-index:5;left:65px;top:48px;width:260px;max-height:245px;overflow:auto;background:#20222c;border:1px solid #454958;border-radius:7px;box-shadow:0 12px 28px #0009;padding:4px}
+.autocomplete[hidden]{display:none}
+.completion-item{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:7px 9px;border-radius:4px;background:transparent;color:#e2e4ec;text-align:left}
+.completion-item strong{font:12px "JetBrains Mono",Consolas,monospace;color:#c792ea}
+.completion-item span{font-size:10px;color:#858a9b}
+.completion-item.chosen,.completion-item:hover{background:#343746}
+.problem-item{display:block;width:100%;padding:7px 9px;text-align:left;background:transparent;color:#ffaaaa;font:11px "JetBrains Mono",Consolas,monospace}
+.problem-item:hover{background:#29232a}
