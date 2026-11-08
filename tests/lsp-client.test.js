@@ -25,7 +25,7 @@ test("definition y references usan el documento activo",async()=>{
 test("rename valida el nombre antes de enviar",async()=>{
  const c=new LspClient();c.child={};c.document={uri:"file:///project/a.rs"};let sent=false;
  c.request=async()=>{sent=true;return{};};
- await assert.rejects(c.rename({line:0,character:0},"bad\\nname"));
+ await assert.rejects(c.rename({line:0,character:0},"bad\nname"));
  assert.equal(sent,false);
  await c.rename({line:0,character:0},"newName");assert.equal(sent,true);
 });
