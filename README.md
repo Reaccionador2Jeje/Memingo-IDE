@@ -36,15 +36,22 @@ npm start
 
 ## Build installers
 
-Run the build on the operating system you want to package:
+Install dependencies and build on the matching operating system:
 
 ```bash
-npm run dist
+npm install
+npm run dist:win
+npm run dist:linux
 ```
 
-- Linux: AppImage and DEB
-- Windows: NSIS installer
-- macOS: DMG
+Generated files are written to `release/`.
+
+- Windows: NSIS installer (`.exe`)
+- Linux: AppImage and DEB packages
+
+GitHub Actions also builds Windows and Linux packages when you manually run **Memingo IDE packages** or push a version tag such as `v0.2.0`. Download the resulting ZIP artifacts from the workflow run (available for 14 days).
+
+**Android:** this Electron desktop application cannot be packaged directly as an APK. An Android edition requires a separate mobile adaptation of the renderer and replacement of Electron-only file, process, Git, terminal and LSP integrations with Android-compatible services. No Android APK is published by this workflow yet.
 
 ## How code execution works
 
