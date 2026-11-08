@@ -576,3 +576,33 @@ window.memingoIDE.onOutput(data=>log(data.text,data.type));
 tabs.push({id:makeId(),path:null,name:"Sin título.mgo",content:editor.value,savedContent:editor.value,dirty:false});
 activeTabId=tabs[0].id;
 renderTabs();updateLines();updateSyntax();
+
+async function runGitAction(action) {
+  if (!projectPath) { log("Abre un proyecto antes de usar Git.", "stderr"); return; }
+  let message = "";
+  if (action === "commit") {
+    message = document.getElementById("gitCommitMessage").value.trim();
+    if (!message) { log("Escribe un mensaje para el commit.", "stderr"); return; }
+  }
+  const labels = {status:"git status",diff:"git diff",log:"git log",branch:"git branch",stage:"git add -A",commit:"git commit",pull:"git pull --ff-only",push:"git push",githubAuth:"gh auth status",githubRepo:"gh repo view"};
+  log("$ " + (labels[action] || action), "hint-line");
+  runStatus.textContent = "● Git trabajando";
+  try {
+    const result = await window.memingoIDE.versionControl({action, message});
+    if (result.stdout) log(result.stdout, "stdout");
+    if (result.stderr) log(result.stderr, result.code === 0 ? "hint-line" : "stderr");
+    if (result.error) log(result.error, "stderr");
+    if (result.code === 0) {
+      log("Acción completada.", "hint-line");
+      if (action === "commit") document.getElementById("gitCommitMessage").value = "";
+      if (action === "status" && result.stdout) {
+        const match = result.stdout.match(/## ([^\\s]+)/);
+        if (match) document.getElementById("gitRepoLabel").textContent = "Rama: " + match[1];
+      }
+    } else log("Git terminó con código " + result.code + ".", "stderr");
+  } catch (error) { log(error.message, "stderr"); }
+  finally { runStatus.textContent = "● Inactivo"; }
+}
+document.querySelectorAll("[data-git]").forEach(button => {
+  button.addEventListener("click", () => runGitAction(button.dataset.git));
+});
