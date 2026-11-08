@@ -304,7 +304,7 @@ async function openProject() {
     if (!project.tree.length) {
       const empty = document.createElement("p");
       empty.className = "tree-empty";
-      empty.textContent = "No se encontraron archivos .mgo o .mgoa.";
+      empty.textContent = "No se encontraron archivos de los lenguajes compatibles.";
       explorerRoot.appendChild(empty);
     }
     log("Proyecto abierto: " + project.path,"hint-line");
@@ -338,6 +338,10 @@ async function newFile() {
 async function runFile() {
   const tab = activeTab();
   if (!tab) return;
+  if (currentLanguageInfo().id !== "memingo") {
+    log("Este archivo está reconocido para edición, pero Memingo IDE todavía no tiene un ejecutor configurado para " + currentLanguageInfo().name + ". No se intentó ejecutarlo con el runtime Memingo.", "stderr");
+    return;
+  }
   if (!tab.path || editor.value !== tab.savedContent) {
     const saved = await saveFile();
     if (!saved) return;
@@ -425,6 +429,7 @@ function applySuggestion(item) {
   hideAutocomplete(); updateLines(); updateSyntax(); updateDirty(); editor.focus();
 }
 function showAutocomplete(force = false) {
+  if (currentLanguageInfo().id !== "memingo") { hideAutocomplete(); return; }
   const cursor = editor.selectionStart;
   const before = editor.value.slice(0,cursor);
   const match = before.match(/[A-Za-z_][A-Za-z0-9_]*$/);
@@ -456,6 +461,7 @@ function moveSuggestion(delta) {
 async function checkFile() {
   const tab = activeTab();
   if (!tab) return;
+  if (currentLanguageInfo().id !== "memingo") { log("El comprobador oficial disponible actualmente es para archivos Memingo (.mgo).", "stderr"); return; }
   if (!tab.path || editor.value !== tab.savedContent) {
     const saved = await saveFile();
     if (!saved) return;
@@ -472,6 +478,7 @@ async function checkFile() {
 async function formatFile() {
   const tab = activeTab();
   if (!tab) return;
+  if (currentLanguageInfo().id !== "memingo") { log("El formateador oficial disponible actualmente es para archivos Memingo (.mgo).", "stderr"); return; }
   if (!tab.path || editor.value !== tab.savedContent) {
     const saved = await saveFile();
     if (!saved) return;
@@ -502,6 +509,7 @@ async function formatFile() {
 async function debugFile() {
   const tab = activeTab();
   if (!tab) return;
+  if (currentLanguageInfo().id !== "memingo") { log("El depurador integrado disponible actualmente es para archivos Memingo (.mgo).", "stderr"); return; }
   if (!tab.path || editor.value !== tab.savedContent) {
     const saved = await saveFile();
     if (!saved) return;
