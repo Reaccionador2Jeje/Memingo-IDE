@@ -225,3 +225,14 @@ Para Rust instala rust-analyzer y para C/C++ instala clangd desde sus sitios ofi
 - Los diagnósticos LSP se integran en el panel **PROBLEMAS** y se pueden seleccionar para saltar a la línea.
 
 Las ediciones de renombrado y acciones rápidas se aplican en el archivo activo en esta etapa; si el servidor propone modificaciones en otros archivos, la interfaz avisa y no las aplica automáticamente. Guarda el archivo con `Ctrl + S` después de aceptar una edición. El soporte concreto depende de las capacidades de cada servidor y del lenguaje. Los servidores externos son software independiente y conservan sus propias licencias y requisitos. Memingo IDE no instala servidores automáticamente ni descarga modelos.
+
+
+## Edición móvil Android
+
+El proyecto incluye una primera edición móvil basada en Capacitor, ubicada en `mobile/`. Permite editar código, conservar un borrador local, importar archivos de texto y exportarlos al dispositivo. Se genera un APK Android de depuración mediante el flujo **Memingo IDE packages**.
+
+Esta primera edición Android es una aplicación móvil independiente y reducida: todavía no incorpora las funciones de escritorio que dependen de Electron, procesos del sistema o servidores externos (ejecución del runtime, terminal, Git, agentes OpenCode/Goose y LSP). El APK de depuración no está firmado para distribución pública.
+
+## ZIP multiplataforma y releases
+
+El flujo **Memingo IDE packages** compila Windows, Linux y Android, descarga los tres artefactos y los reúne en `Memingo-IDE-release.zip`. En ejecuciones manuales, el ZIP aparece como artefacto `memingo-ide-all-platforms`. Al publicar un tag `v*`, el flujo también adjunta el ZIP a un GitHub Release. Los artefactos temporales se conservan 14 días y el ZIP combinado 30 días.
