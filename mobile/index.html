@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101116">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; style-src 'self'; script-src 'self';">
+  <title>Memingo IDE Mobile</title>
+  <link rel="stylesheet" href="mobile.css">
+</head>
+<body>
+  <header><div class="brand"><span class="logo">M</span><span>memingo <small>IDE mobile</small></span></div><span id="saveState">Guardado local</span></header>
+  <nav>
+    <button id="newFile">Nuevo</button><button id="openFile">Abrir</button><button id="saveFile">Guardar</button><button id="exportFile">Exportar</button>
+    <input id="filePicker" type="file" accept=".mgo,.mgoa,.txt,.js,.ts,.py,.html,.css,.json,.md" hidden>
+  </nav>
+  <main>
+    <div class="filebar"><input id="fileName" value="main.mgo" aria-label="Nombre del archivo"><select id="language"><option value="memingo">Memingo</option><option value="javascript">JavaScript</option><option value="python">Python</option><option value="html">HTML</option><option value="css">CSS</option><option value="json">JSON</option><option value="text">Texto</option></select></div>
+    <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Editor de código" placeholder="# Escribe código aquí..."></textarea>
+    <section class="help"><strong>Edición móvil</strong><p>Esta edición permite crear, editar, guardar localmente e importar/exportar archivos. Las funciones de ejecución Memingo, Git, agentes y LSP de escritorio todavía no están disponibles en Android.</p></section>
+  </main>
+  <script src="mobile.js"></script>
+</body>
+</html>
