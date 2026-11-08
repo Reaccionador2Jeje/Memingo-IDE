@@ -63,8 +63,12 @@ async function ensureAgentPermissions(root) {
   const configDir = path.join(root, ".opencode");
   const configPath = path.join(configDir, "opencode.json");
   await fs.mkdir(configDir, { recursive: true });
+  const directoryStat = await fs.lstat(configDir);
+  if (!directoryStat.isDirectory() || directoryStat.isSymbolicLink()) throw new Error("La carpeta .opencode no es una carpeta normal; no se modificó.");
   let config = {};
   try {
+    const configStat = await fs.lstat(configPath);
+    if (!configStat.isFile() || configStat.isSymbolicLink() || configStat.size > 256 * 1024) throw new Error("El archivo de configuración de OpenCode no es válido o supera 256 KB.");
     const source = await fs.readFile(configPath, "utf8");
     try { config = JSON.parse(source); }
     catch { throw new Error("Tu .opencode/opencode.json tiene comentarios o formato no compatible. No lo modificamos: revisa sus permisos manualmente antes de conectar el agente."); }
@@ -163,11 +167,13 @@ ipcMain.handle("agents:connect", async () => {
   const child = spawn(process.platform === "win32" ? "opencode.exe" : "opencode", ["serve", "--hostname", "127.0.0.1", "--port", String(port)], {
     cwd: root, windowsHide: true, env: process.env, shell: false
   });
+  let spawnError = null;
   agentProcess = child;
   agentPort = port;
   child.stdout.on("data", data => sendAgentEvent({ type: "agent.log", text: data.toString() }));
   child.stderr.on("data", data => sendAgentEvent({ type: "agent.log", text: data.toString() }));
   child.on("error", error => {
+    spawnError = error;
     if (agentProcess === child) {
       agentProcess = null; agentPort = null; agentSessionId = null;
     }
@@ -190,6 +196,7 @@ ipcMain.handle("agents:connect", async () => {
   }
   if (!healthy) {
     if (agentProcess === child) { child.kill(); agentProcess = null; agentPort = null; }
+    if (spawnError?.code === "ENOENT") throw new Error("No se encontró OpenCode. Instálalo desde https://opencode.ai y asegúrate de que el comando opencode esté en PATH.");
     throw new Error("OpenCode no respondió. Comprueba que esté instalado y que pueda iniciarse.");
   }
   agentEventAbort = new AbortController();
