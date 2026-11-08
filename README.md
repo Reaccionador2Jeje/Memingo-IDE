@@ -175,17 +175,10 @@ También puedes iniciar la validación manualmente desde la pestaña **Actions**
 
 ## Compatibilidad multilenguaje
 
-Memingo IDE incorpora un catálogo extensible de más de 80 lenguajes y familias de formatos, con más de 100 extensiones reconocidas. Incluye, entre otros:
+Memingo IDE incorpora un catálogo extensible de más de 100 lenguajes y familias de formatos, con más de 130 extensiones. Incluye lenguajes web, backend, móviles, sistemas, bases de datos, configuración, documentación, videojuegos, shaders, hardware y computación científica. Entre ellos: JavaScript, TypeScript, Python, Java, Kotlin, C, C++, C#, Go, Rust, Ruby, PHP, Swift, Dart, Lua, R, Julia, HTML, CSS, Vue, Svelte, Astro, SQL, GraphQL, YAML, TOML, Terraform, Dockerfile, Shell, PowerShell, GDScript, GLSL, HLSL, Solidity, Zig, Nim, Haskell, Elixir, Erlang, Fortran, COBOL, Ada, Verilog, VHDL, Gleam, Roc, Q#, Bicep, CUE y muchos más.
 
-- **Web:** HTML, CSS, SCSS, JavaScript, TypeScript, JSX, TSX, Vue, Svelte y Astro.
-- **General y backend:** Python, Java, Kotlin, C, C++, C#, Go, Rust, Ruby, PHP, Swift, Dart, Lua, Perl, R y Julia.
-- **Sistemas y scripting:** Shell, PowerShell, Batch, Assembly, Zig, Nim, Haskell, Elixir, Erlang y más.
-- **Videojuegos y gráficos:** GDScript, Godot Shader, GML, GLSL, HLSL y CUDA.
-- **Datos y configuración:** JSON, JSON5, JSONC, YAML, TOML, INI, XML, CSV, GraphQL, Protocol Buffers, SQL y Terraform.
-- **Documentación y otros:** Markdown, MDX, reStructuredText, LaTeX, Diff, logs y texto plano.
+El catálogo se centraliza en `src/languages/registry.js`. El IDE reconoce extensiones y nombres especiales de proyecto (por ejemplo `Dockerfile`, `Makefile`, `CMakeLists.txt`, `.gitignore`, `.env`, `package-lock.json` y `Cargo.lock`). También aplica prioridades deterministas a extensiones ambiguas, como `.m`, `.v` y `.pl`. El explorador y el diálogo de apertura usan el catálogo; el editor detecta el lenguaje de la pestaña activa, permite cambiarlo manualmente y aplica resaltado básico. La selección manual se conserva mientras la pestaña permanezca abierta.
 
-El catálogo se centraliza en `src/languages/registry.js`. El explorador y el diálogo de apertura usan las extensiones registradas; el editor detecta el lenguaje de la pestaña activa, muestra un selector manual para corregir extensiones ambiguas o elegir texto plano y aplica resaltado de sintaxis general. La selección manual se conserva mientras la pestaña permanezca abierta. Las sugerencias de autocompletado propias de Memingo solo aparecen en archivos `.mgo` y `.mgoa`.
+**Alcance importante:** esta etapa amplía reconocimiento, apertura, edición, guardado y resaltado general. No significa que todos los lenguajes tengan ya compilador, runtime, depurador, autocompletado inteligente o formateador integrado. Esas capacidades requieren herramientas específicas por lenguaje; se incorporarán mediante integraciones independientes y sin ejecutar comandos arbitrarios desde el editor. Los botones Ejecutar, Comprobar, Formatear y Depurar siguen reservados al runtime Memingo, para evitar enviar accidentalmente otros archivos a ese ejecutable.
 
-**Alcance importante:** esta etapa habilita reconocimiento, apertura, edición, guardado y resaltado básico para los formatos registrados. No equivale todavía a soporte completo de cada ecosistema: los servidores de lenguaje (LSP), autocompletado inteligente, depuradores, formateadores, compiladores y ejecución se deben integrar por lenguaje y requieren sus herramientas externas. Los botones Ejecutar, Comprobar, Formatear y Depurar siguen reservados al runtime Memingo; otros archivos no se enviarán accidentalmente a ese runtime.
-
-Para añadir un lenguaje, registra su ID, nombre, extensiones y familia de sintaxis en `src/languages/registry.js`, y añade casos a `tests/language-registry.test.js`.
+Para añadir o ajustar un lenguaje, registra su ID, nombre, extensiones, familia de sintaxis y, cuando corresponda, nombres especiales en `src/languages/registry.js`. Las pruebas de `tests/language-registry.test.js` cubren el catálogo, detección de nombres especiales y extensiones ambiguas.
