@@ -34,6 +34,7 @@ let projectPath = null;
 let logEntries = [];
 let suggestionItems = [];
 let languageRegistry = [];
+let languageOverrides = new Map();
 let suggestionIndex = 0;
 let outputMode = "console";
 
@@ -45,6 +46,11 @@ function escapeHTML(value) {
 }
 function currentLanguageInfo() {
   const tab = activeTab();
+  const override = tab ? languageOverrides.get(tab.id) : null;
+  if (override) {
+    const selected = languageRegistry.find(language => language.id === override);
+    if (selected) return selected;
+  }
   const fileName = (tab?.name || (tab?.path ? basename(tab.path) : "main.mgo")).toLowerCase();
   const extension = fileName.includes(".") ? fileName.split(".").pop() : "";
   const match = languageRegistry.find(language => language.extensions.includes(extension));
@@ -56,8 +62,8 @@ function currentLanguageInfo() {
 function updateSyntax() {
   const source = editor.value;
   const language = currentLanguageInfo();
-  const languageLabel = document.getElementById("languageLabel");
-  if (languageLabel) languageLabel.textContent = language.name;
+  const languageSelect = document.getElementById("languageSelect");
+  if (languageSelect && languageSelect.value !== language.id) languageSelect.value = language.id;
   let html = "";
   let last = 0;
   if (language.id === "memingo") {
@@ -102,6 +108,21 @@ async function loadLanguageRegistry() {
   try {
     const languages = await window.memingoIDE.listLanguages();
     languageRegistry = Array.isArray(languages) ? languages : [];
+    const selector = document.getElementById("languageSelect");
+    if (selector) {
+      selector.replaceChildren();
+      for (const language of [...languageRegistry, { id: "plaintext", name: "Texto plano" }]) {
+        const option = document.createElement("option");
+        option.value = language.id;
+        option.textContent = language.name;
+        selector.appendChild(option);
+      }
+      selector.addEventListener("change", () => {
+        const tab = activeTab();
+        if (tab) languageOverrides.set(tab.id, selector.value);
+        updateSyntax();
+      });
+    }
     updateSyntax();
   } catch (error) {
     log("No se pudo cargar el catálogo de lenguajes: " + error.message, "stderr");
