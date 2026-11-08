@@ -40,6 +40,7 @@ let lspChangeTimer = null;
 let lspCompletionTimer = null;
 let lspCompletionMode = false;
 let lspDiagnostics = [];
+let lspDiagnosticsUri = null;
 let languageOverrides = new Map();
 let suggestionIndex = 0;
 let outputMode = "console";
@@ -163,6 +164,7 @@ window.memingoIDE.onLspEvent(event => {
   if (event.type === "lsp.diagnostics") {
     const diagnostics = Array.isArray(event.diagnostics) ? event.diagnostics : [];
     lspDiagnostics = diagnostics;
+    lspDiagnosticsUri = event.uri || null;
     if (!diagnostics.length) { if (outputMode === "problems") showProblems(); return; }
     const errors = diagnostics.filter(item => item.severity === 1).length;
     const warnings = diagnostics.filter(item => item.severity === 2).length;
@@ -485,30 +487,22 @@ function analyzeSource(source) {
   return errors.sort((a,b)=>a.line-b.line);
 }
 function showProblems() {
-  syncActiveToTab();
-  outputMode = "problems";
-  output.replaceChildren();
-  const tab = activeTab();
-  const errors = analyzeSource(editor.value);
-  if (!errors.length) {
-    const item = document.createElement("div");
-    item.className = "hint-line";
-    item.textContent = "✓ No se encontraron errores básicos de delimitadores o cadenas.";
-    output.appendChild(item);
-  } else {
-    for (const error of errors) {
-      const item = document.createElement("button");
-      item.className = "problem-item";
-      item.type = "button";
-      item.textContent = "Línea " + error.line + ": " + error.message;
-      item.addEventListener("click",() => {
-        const lines = editor.value.split("\n");
-        const position = lines.slice(0,error.line-1).reduce((sum,value)=>sum+value.length+1,0);
-        editor.focus(); editor.setSelectionRange(position,position);
-      });
-      output.appendChild(item);
-    }
-  }
+ syncActiveToTab();outputMode="problems";output.replaceChildren();
+ const tab=activeTab(),local=analyzeSource(editor.value).map(item=>({line:item.line,message:item.message,severity:1,local:true}));
+ let remote=[];
+ if(tab?.path&&lspDiagnosticsUri===new URL("file://"+tab.path).href)remote=lspDiagnostics.map(item=>({line:(item.range?.start?.line??0)+1,message:item.message||"Diagnóstico LSP",severity:item.severity||3,range:item.range}));
+ const errors=[...local,...remote].sort((a,b)=>a.line-b.line);
+ if(!errors.length){const item=document.createElement("div");item.className="hint-line";item.textContent="✓ No se encontraron errores ni advertencias.";output.appendChild(item);return;}
+ for(const error of errors){
+  const item=document.createElement("button");item.className="problem-item";item.type="button";
+  const level=error.severity===1?"Error":error.severity===2?"Advertencia":error.severity===3?"Información":"Sugerencia";
+  item.textContent=level+" · Línea "+error.line+": "+error.message;
+  item.addEventListener("click",()=>{
+   const offset=error.range?.start?offsetAt(error.range.start):editor.value.split("\\n").slice(0,error.line-1).reduce((sum,value)=>sum+value.length+1,0);
+   editor.focus();editor.setSelectionRange(offset,offset);
+  });
+  output.appendChild(item);
+ }
 }
 function showConsole() {
   outputMode = "console";
