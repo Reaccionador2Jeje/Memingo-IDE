@@ -83,3 +83,8 @@ La lectura del manifest está limitada a 64 KB y la ruta del archivo principal s
 ## Terminal integrada
 
 La terminal acepta únicamente comandos incorporados y acciones del runtime Memingo: help, clear, pwd, ls, memingo run, memingo check y memingo fmt. Los tres comandos del runtime trabajan sobre el archivo activo. No se ejecutan comandos arbitrarios del sistema ni se usa un shell, para reducir riesgos de ejecución accidental.
+
+
+## Depurador
+
+El botón **Depurar** ejecuta el comando `memingo debug` del runtime y muestra una traza por sentencia, con número de línea, tipo de sentencia y variables visibles. Haz clic en los números del margen del editor para marcar o quitar breakpoints; las líneas marcadas se destacan en la traza. Esta primera versión recopila la ejecución completa y señala los breakpoints, pero todavía no pausa el programa para avanzar manualmente.
