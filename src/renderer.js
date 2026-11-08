@@ -162,7 +162,8 @@ async function loadLanguageServers() {
 window.memingoIDE.onLspEvent(event => {
   if (event.type === "lsp.diagnostics") {
     const diagnostics = Array.isArray(event.diagnostics) ? event.diagnostics : [];
-    if (!diagnostics.length) return;
+    lspDiagnostics = diagnostics;
+    if (!diagnostics.length) { if (outputMode === "problems") showProblems(); return; }
     const errors = diagnostics.filter(item => item.severity === 1).length;
     const warnings = diagnostics.filter(item => item.severity === 2).length;
     log("LSP encontró " + errors + " error(es) y " + warnings + " advertencia(s).", errors ? "stderr" : "hint-line");
@@ -760,14 +761,14 @@ editor.addEventListener("input",()=>{
   updateLines(); updateSyntax(); updateDirty();
   sendLspDocumentChange();
   if (outputMode==="problems") showProblems();
-  showAutocomplete();
+  if (currentLanguageInfo().id === "memingo") showAutocomplete(); else scheduleLspCompletion();
 });
 editor.addEventListener("scroll",updateLines);
 editor.addEventListener("keydown",event=>{
   if (!autocomplete.hidden) {
     if (event.key==="ArrowDown") {event.preventDefault();moveSuggestion(1);return;}
     if (event.key==="ArrowUp") {event.preventDefault();moveSuggestion(-1);return;}
-    if (event.key==="Enter" && suggestionItems.length) {event.preventDefault();applySuggestion(suggestionItems[suggestionIndex]);return;}
+    if (event.key==="Enter" && suggestionItems.length) {event.preventDefault();const item=suggestionItems[suggestionIndex];if(item?.action){hideAutocomplete();try{if(item.action.edit&&applyCurrentWorkspaceEdit(item.action.edit))log("Acción aplicada. Guarda con Ctrl+S.","hint-line");else log("La acción requiere soporte adicional.","hint-line");}catch(error){log(error.message,"stderr");}}else if(lspCompletionMode)applyLspCompletion(item);else applySuggestion(item);return;}
     if (event.key==="Escape") {hideAutocomplete();return;}
   }
   if (event.key==="Tab") {
@@ -776,12 +777,20 @@ editor.addEventListener("keydown",event=>{
     editor.setRangeText("    ",start,end,"end");
     updateLines();updateSyntax();updateDirty();
   }
-  if ((event.ctrlKey||event.metaKey)&&event.key===" ") {event.preventDefault();showAutocomplete(true);}
+  if ((event.ctrlKey||event.metaKey)&&event.key===" ") {event.preventDefault();if(activeLspKey&&currentLanguageInfo().id!=="memingo")requestLspCompletion();else showAutocomplete(true);}
+  if (event.key==="F12") {event.preventDefault();if(event.shiftKey)lspReferences();else lspDefinition();}
+  if (event.key==="F2") {event.preventDefault();lspRename();}
+  if ((event.ctrlKey||event.metaKey)&&event.key===".") {event.preventDefault();lspCodeActions();}
   if ((event.ctrlKey||event.metaKey)&&event.key==="Enter") {event.preventDefault();runFile();}
   if ((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="s") {event.preventDefault();saveFile();}
   if ((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="o") {event.preventDefault();openFile();}
 });
 editor.addEventListener("blur",()=>setTimeout(()=>{if (!autocomplete.matches(":hover")) hideAutocomplete();},120));
+document.getElementById("lspHover").addEventListener("click", lspHover);
+document.getElementById("lspDefinition").addEventListener("click", lspDefinition);
+document.getElementById("lspReferences").addEventListener("click", lspReferences);
+document.getElementById("lspRename").addEventListener("click", lspRename);
+document.getElementById("lspActions").addEventListener("click", lspCodeActions);
 window.memingoIDE.onOutput(data=>log(data.text,data.type));
 tabs.push({id:makeId(),path:null,name:"Sin título.mgo",content:editor.value,savedContent:editor.value,dirty:false});
 activeTabId=tabs[0].id;
