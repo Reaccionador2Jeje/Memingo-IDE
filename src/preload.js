@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld("memingoIDE", {
   readConflictFile: payload => ipcRenderer.invoke("vcs:conflict-read", payload),
   saveConflictFile: payload => ipcRenderer.invoke("vcs:conflict-save", payload),
   stageConflictFile: payload => ipcRenderer.invoke("vcs:conflict-stage", payload),
+  listAgentEngines: () => ipcRenderer.invoke("agents:list"),
   connectAgent: payload => ipcRenderer.invoke("agents:connect", payload),
   sendAgentPrompt: payload => ipcRenderer.invoke("agents:send", payload),
   answerAgentPermission: payload => ipcRenderer.invoke("agents:permission", payload),
