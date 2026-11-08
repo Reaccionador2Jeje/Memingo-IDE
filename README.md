@@ -149,7 +149,7 @@ Para incorporar otro motor:
 3. Enruta por su protocolo registrado y conserva la validación del motor y del perfil.
 4. Añade pruebas de protocolo y permisos antes de habilitarlo en una versión publicada.
 
-El registro actual admite adaptadores HTTP y ACP. Añadir una entrada al registro por sí sola no integra un motor: también necesita su adaptador funcional. No se cargan plugins ejecutables de terceros ni comandos externos desde la interfaz.
+El registro actual admite adaptadores HTTP y ACP. Añadir una entrada al registro por sí sola no integra un motor: también necesita su adaptador funcional. No se cargan plugins ejecutables de terceros ni comandos externos desde la interfaz. Para comprobar el registro y la sintaxis del proyecto, ejecuta `npm test` y `npm run check`.
 
 #### Requisitos del agente
 
