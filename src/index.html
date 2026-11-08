@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self';">
+  <title>Memingo IDE</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="titlebar">
+    <div class="brand"><div class="logo">M</div><span>memingo<span class="muted"> IDE</span></span><span class="version">0.1.0</span></div>
+    <div class="top-actions">
+      <button id="newBtn" class="quiet">Nuevo</button>
+      <button id="openBtn" class="quiet">Abrir</button>
+      <button id="saveBtn" class="quiet">Guardar</button>
+      <button id="runBtn" class="run"><span>▶</span> Ejecutar</button>
+    </div>
+  </header>
+  <main class="workspace">
+    <aside class="activity"><div class="active">▤</div><div>⌕</div><div>⚙</div><div class="bottom">?</div></aside>
+    <section class="editor-area">
+      <div class="tabbar"><div class="tab"><span class="file-icon">M</span><span id="tabName">Bienvenido.mgo</span><span class="dirty" id="dirtyMark"></span></div><div class="path-label" id="pathLabel">Sin proyecto abierto</div></div>
+      <div class="editor-wrap">
+        <div class="gutter" id="gutter">1</div>
+        <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Editor de código" placeholder="# Escribe tu código Memingo aquí..."></textarea>
+      </div>
+      <footer class="status"><span>● Memingo</span><span id="statusText">Listo</span><span>UTF-8</span><span>LF</span><span>.mgo</span></footer>
+    </section>
+    <aside class="side-panel">
+      <div class="panel-heading">EXPLORADOR</div>
+      <div class="empty-explorer"><div class="folder-icon">▰</div><strong>Tu espacio de trabajo</strong><p>Abre o crea un archivo .mgo para comenzar a programar.</p><button id="sideOpen" class="outline">Abrir archivo</button></div>
+      <div class="help-card"><span class="help-dot"></span><strong>Memingo Runtime</strong><p>Para ejecutar código necesitas tener Memingo instalado y disponible en PATH.</p><a href="https://github.com/Reaccionador2Jeje/Memingo">Ver runtime ↗</a></div>
+    </aside>
+  </main>
+  <section class="terminal">
+    <div class="terminal-head"><div class="terminal-tabs"><button class="selected">CONSOLA</button><button id="clearBtn">PROBLEMAS</button></div><div class="terminal-tools"><span id="runStatus">● Inactivo</span><button id="stopBtn" title="Detener">■</button><button id="clearOutput">⌫</button></div></div>
+    <div id="output" class="output"><div class="welcome-line">Memingo IDE Terminal <span>—</span> Lista para ejecutar tus programas.</div><div class="hint-line">Pulsa <kbd>Ctrl</kbd> + <kbd>Enter</kbd> para ejecutar el archivo actual.</div></div>
+  </section>
+  <script src="renderer.js"></script>
+</body>
+</html>
