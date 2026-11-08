@@ -319,18 +319,20 @@ async function runMemingoDebug(event, filePath, breakpoints = []) {
 ipcMain.handle("memingo:debug", (event, payload) => runMemingoDebug(event, payload?.filePath, payload?.breakpoints));
 
 
-async function runGitFileAction(action, relativePath = "") {
+async function runGitFileAction(action, relativePath = "", commitHash = "") {
   if (!projectRoot) throw new Error("Abre un proyecto antes de usar Git.");
   if (typeof relativePath !== "string" || !relativePath || path.isAbsolute(relativePath)) throw new Error("Selecciona un archivo válido del proyecto.");
   const root = path.resolve(projectRoot);
   const target = path.resolve(root, relativePath);
   const relative = path.relative(root, target);
   if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) throw new Error("La ruta del archivo sale del proyecto.");
-  const stat = await fs.lstat(target).catch(() => null);
-  if (!stat || !stat.isFile() || stat.isSymbolicLink()) throw new Error("El archivo ya no existe o no es válido.");
+  if (action !== "commitFileDiff") {
+    const stat = await fs.lstat(target).catch(() => null);
+    if (!stat || !stat.isFile() || stat.isSymbolicLink()) throw new Error("El archivo ya no existe o no es válido.");
+  }
   let args;
   if (action === "commitFileDiff") {
-    const hash = arguments.length > 2 ? arguments[2] : "";
+    const hash = commitHash;
     if (typeof hash !== "string" || !/^[a-f0-9]{40}$/i.test(hash)) throw new Error("Identificador de commit no válido.");
     return runGitProcess(root, "git", ["show", "--format=", "--no-ext-diff", "--no-color", hash, "--", relative]);
   }
@@ -429,7 +431,8 @@ ipcMain.handle("vcs:commit-detail", async (_event, payload = {}) => {
 ipcMain.handle("vcs:file", async (_event, payload = {}) => {
   const action = typeof payload.action === "string" ? payload.action : "";
   const filePath = typeof payload.path === "string" ? payload.path : "";
-  return runGitFileAction(action, filePath);
+  const hash = typeof payload.hash === "string" ? payload.hash : "";
+  return runGitFileAction(action, filePath, hash);
 });
 
 ipcMain.handle("vcs:execute", async (_event, payload = {}) => {
