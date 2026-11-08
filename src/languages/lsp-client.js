@@ -52,7 +52,7 @@ class LspClient{
  async definition(position){return this.positionRequest("textDocument/definition",position);}
  async references(position){return this.positionRequest("textDocument/references",position,{context:{includeDeclaration:true}});}
  async rename(position,newName){
-  if(typeof newName!=="string"||!newName.trim()||newName.length>256||/[\\r\\n\\0]/.test(newName))throw new Error("El nuevo nombre no es válido.");
+  if(typeof newName!=="string"||!newName.trim()||newName.length>256||/[\r\n\0].test(newName))throw new Error("El nuevo nombre no es válido.");
   return this.positionRequest("textDocument/rename",position,{newName:newName.trim()});
  }
  async codeAction(range,diagnostics=[]){
