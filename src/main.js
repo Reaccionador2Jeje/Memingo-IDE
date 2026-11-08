@@ -329,6 +329,11 @@ async function runGitFileAction(action, relativePath = "") {
   const stat = await fs.lstat(target).catch(() => null);
   if (!stat || !stat.isFile() || stat.isSymbolicLink()) throw new Error("El archivo ya no existe o no es válido.");
   let args;
+  if (action === "commitFileDiff") {
+    const hash = arguments.length > 2 ? arguments[2] : "";
+    if (typeof hash !== "string" || !/^[a-f0-9]{40}$/i.test(hash)) throw new Error("Identificador de commit no válido.");
+    return runGitProcess(root, "git", ["show", "--format=", "--no-ext-diff", "--no-color", hash, "--", relative]);
+  }
   if (action === "fileDiff") {
     const staged = await runGitProcess(root, "git", ["diff", "--cached", "--no-ext-diff", "--no-color", "--", relative]);
     const unstaged = await runGitProcess(root, "git", ["diff", "--no-ext-diff", "--no-color", "--", relative]);
@@ -358,6 +363,7 @@ function runGitProcess(root, executable, args) {
 const GIT_ACTIONS = {
   status: ["git", ["status", "--short", "--branch"]],
   changes: ["git", ["status", "--porcelain=v1", "-uall"]],
+  history: ["git", ["log", "-30", "--date=iso-strict", "--format=%H%x1f%h%x1f%an%x1f%ad%x1f%s"]],
   diff: ["git", ["diff", "--"]],
   log: ["git", ["log", "-5", "--oneline", "--decorate"]],
   branch: ["git", ["branch", "--show-current"]],
@@ -408,6 +414,17 @@ async function runVersionControl(action, message = "") {
     child.on("close", code => finish({ code: code ?? -1, stdout, stderr }));
   });
 }
+
+ipcMain.handle("vcs:commit-detail", async (_event, payload = {}) => {
+  if (!projectRoot) throw new Error("Abre un proyecto antes de consultar el historial.");
+  const hash = typeof payload.hash === "string" ? payload.hash : "";
+  if (!/^[a-f0-9]{40}$/i.test(hash)) throw new Error("Identificador de commit no válido.");
+  const root = path.resolve(projectRoot);
+  const detail = await runGitProcess(root, "git", ["show", "--format=fuller", "--stat", "--no-renames", "--no-color", hash]);
+  if (detail.code !== 0) return detail;
+  const names = await runGitProcess(root, "git", ["diff-tree", "--no-commit-id", "--name-only", "-r", hash]);
+  return { ...detail, files: names.code === 0 ? names.stdout.split(/\\r?\\n/).filter(Boolean).slice(0, 300) : [] };
+});
 
 ipcMain.handle("vcs:file", async (_event, payload = {}) => {
   const action = typeof payload.action === "string" ? payload.action : "";
