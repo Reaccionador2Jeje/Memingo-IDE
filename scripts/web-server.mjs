@@ -119,7 +119,8 @@ async function main() {
   server.listen(options.port, options.host, () => {
     const address = server.address();
     console.log("Memingo IDE Web está listo:");
-    console.log("  http://127.0.0.1:" + address.port);
+    const displayHost = address.address === "::1" ? "[::1]" : "127.0.0.1";
+    console.log("  http://" + displayHost + ":" + address.port);
     console.log("  Presiona Ctrl+C para detener el servidor.");
   });
 }
