@@ -4,6 +4,7 @@ const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 
 const LANGUAGE_SERVERS = Object.freeze({
+  memingo:{command:"memingo",args:["lsp","--stdio"],languageId:"memingo",install:"Instala Memingo desde https://github.com/Reaccionador2Jeje/Memingo"},
   javascript:{command:"typescript-language-server",args:["--stdio"],languageId:"javascript",install:"npm install -g typescript typescript-language-server"},
   typescript:{command:"typescript-language-server",args:["--stdio"],languageId:"typescript",install:"npm install -g typescript typescript-language-server"},
   jsx:{command:"typescript-language-server",args:["--stdio"],languageId:"javascript",install:"npm install -g typescript typescript-language-server"},
