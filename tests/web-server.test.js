@@ -45,3 +45,43 @@ test("rejects methods other than GET and HEAD", async () => {
 test("does not allow binding to a public interface", () => {
   assert.throws(() => createWebServer({ host: "0.0.0.0" }), /localhost/);
 });
+
+import { spawn } from "node:child_process";
+import { once } from "node:events";
+import { fileURLToPath } from "node:url";
+
+test("npm executable keeps the Node server running in the foreground", async () => {
+  const entry = fileURLToPath(new URL("../bin/memingo-ide-web.mjs", import.meta.url));
+  const child = spawn(process.execPath, [entry, "--port", "0"], {
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+  let output = "";
+  const ready = new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error("server did not become ready")), 5000);
+    child.stdout.on("data", chunk => {
+      output += chunk.toString();
+      if (output.includes("Presiona Ctrl+C")) {
+        clearTimeout(timeout);
+        resolve();
+      }
+    });
+    child.once("error", error => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+    child.once("exit", code => {
+      clearTimeout(timeout);
+      reject(new Error("server exited before becoming ready (code " + code + ")"));
+    });
+  });
+  try {
+    await ready;
+    assert.equal(child.exitCode, null);
+    assert.match(output, /http:\/\/127\.0\.0\.1:/);
+  } finally {
+    if (child.exitCode === null) {
+      child.kill("SIGTERM");
+      await once(child, "exit");
+    }
+  }
+});
