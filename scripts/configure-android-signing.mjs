@@ -30,9 +30,6 @@ if (!source.includes("signingConfigs {")) {
     buildTypes {
 `);
 }
-source = source.replace(/release\s*\{([\s\S]*?)\n\s*\}/, (block) => {
-  if (block.includes("signingConfig")) return block;
-  return block.replace(/release\s*\{/, "release {\n            signingConfig signingConfigs.release");
-});
+source = source.replace(/(buildTypes\\s*\\{[\\s\\S]*?release\\s*\\{)/, "$1\\n            signingConfig signingConfigs.release");
 fs.writeFileSync(gradle, source);
 console.log("Android release signing configured.");
