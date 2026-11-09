@@ -30,7 +30,7 @@
     "dist:linux": "electron-builder --linux --publish never",
     "dist:mac": "electron-builder --mac --universal --publish never",
     "dist:all": "electron-builder --win --linux --publish never",
-    "web": "node scripts/web-server.mjs"
+    "web": "node bin/memingo-ide-web.mjs"
   },
   "devDependencies": {
     "electron": "^37.2.6",
@@ -153,6 +153,6 @@
     }
   },
   "bin": {
-    "memingo-ide-web": "scripts/web-server.mjs"
+    "memingo-ide-web": "bin/memingo-ide-web.mjs"
   }
 }
