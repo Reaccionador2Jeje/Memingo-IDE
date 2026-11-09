@@ -42,7 +42,7 @@ export function createWebServer({ root = DEFAULT_ROOT, host = "127.0.0.1" } = {}
       return;
     }
 
-    if (pathname.includes("\\0") || pathname.includes("\\\\")) {
+    if (pathname.includes("\0") || pathname.includes("\\")) {
       response.writeHead(400);
       response.end("Bad request");
       return;
