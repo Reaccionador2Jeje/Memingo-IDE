@@ -12,7 +12,7 @@
   <header><div class="brand"><span class="logo">M</span><span>memingo <small>IDE mobile</small></span></div><span id="saveState">Guardado local</span></header>
   <nav class="toolbar">
     <button id="newFile">Nuevo</button><button id="openFile">Abrir</button><button id="saveFile">Guardar</button><button id="exportFile">Exportar</button>
-    <button id="findButton">Buscar</button><button id="replaceButton">Reemplazar</button><button id="checkButton">Revisar</button>
+    <button id="findButton">Buscar</button><button id="replaceButton">Reemplazar</button><button id="checkButton">Revisar</button><button id="suggestButton">Sugerir</button>
     <input id="filePicker" type="file" accept=".mgo,.mgoa,.txt,.js,.ts,.py,.html,.css,.json,.md" hidden>
   </nav>
   <div id="tabs" class="tabs" role="tablist" aria-label="Archivos abiertos"></div>
@@ -28,8 +28,9 @@
       <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Editor de código" placeholder="# Escribe código aquí..."></textarea>
     </div>
     <footer class="statusbar"><span id="cursorStatus">Línea 1 · Columna 1</span><span id="diagnosticStatus">Sin revisar</span><span id="languageStatus">Memingo</span></footer>
+    <section id="completionPanel" class="panel" hidden><strong>Sugerencias Memingo</strong><div id="completionList"></div></section>
     <section id="diagnostics" class="panel" hidden><strong>Diagnósticos</strong><ul id="diagnosticList"></ul></section>
-    <section class="help"><strong>Memingo IDE Mobile</strong><p>Ahora incluye pestañas, borradores por archivo, búsqueda, reemplazo, atajos, sangría automática y revisión básica de delimitadores. La ejecución Memingo, Git, agentes y LSP completo todavía requieren una capa de servicios Android.</p></section>
+    <section class="help"><strong>Memingo IDE Mobile</strong><p>Ahora incluye pestañas, borradores por archivo, búsqueda, reemplazo, atajos, sangría automática y revisión básica de delimitadores. Incluye sugerencias locales de palabras clave y funciones integradas. El servidor LSP completo y las herramientas que necesitan procesos del sistema todavía requieren una capa de servicios Android.</p></section>
   </main>
   <script src="mobile.js"></script>
 </body>
