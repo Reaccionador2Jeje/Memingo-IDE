@@ -8,11 +8,46 @@ on:
       - "v*"
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: packages-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  package:
+  validate:
+    name: Validate source
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Validate source
+        run: |
+          npm run check
+          npm test
+
+      - name: Verify release tag matches package version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "El tag $GITHUB_REF_NAME no coincide con package.json v$VERSION"
+            exit 1
+          fi
+
+  desktop:
     name: Build ${{ matrix.platform }}
+    needs: validate
     strategy:
       fail-fast: false
       matrix:
@@ -25,89 +60,165 @@ jobs:
             os: ubuntu-latest
             command: npm run dist:linux
             artifact: linux
+          - platform: macOS
+            os: macos-latest
+            command: npm run dist:mac
+            artifact: macos
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    env:
+      CSC_LINK: ${{ matrix.platform == 'Windows' && secrets.WINDOWS_CSC_LINK || matrix.platform == 'macOS' && secrets.MACOS_CSC_LINK || '' }}
+      CSC_KEY_PASSWORD: ${{ matrix.platform == 'Windows' && secrets.WINDOWS_CSC_KEY_PASSWORD || matrix.platform == 'macOS' && secrets.MACOS_CSC_KEY_PASSWORD || '' }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+
       - name: Install dependencies
-        run: npm install
-      - name: Validate source
-        run: |
-          npm run check
-          npm test
-      - name: Build desktop installers
+        run: npm ci --no-audit --no-fund
+
+      - name: Build desktop packages
         run: ${{ matrix.command }}
+
+      - name: Remove builder metadata
+        shell: bash
+        run: rm -f release/builder-*.yml release/builder-*.yaml
+
       - name: Upload desktop packages
         uses: actions/upload-artifact@v4
         with:
           name: memingo-ide-${{ matrix.artifact }}
-          path: release/*
+          path: |
+            release/*.exe
+            release/*.zip
+            release/*.dmg
+            release/*.AppImage
+            release/*.deb
+            release/*.tar.gz
+            release/*.blockmap
           if-no-files-found: error
           retention-days: 14
 
   android:
     name: Build Android APK
+    needs: validate
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
+
       - name: Install dependencies
-        run: npm install
-      - name: Generate Android project
-        run: npx cap add android
-      - name: Sync mobile application
-        run: npx cap sync android
-      - name: Build debug APK
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Prepare Android signing
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
         run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug
-      - name: Upload Android APK
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/memingo-release.keystore"
+          {
+            echo "MEMINGO_ANDROID_KEYSTORE=$RUNNER_TEMP/memingo-release.keystore"
+            echo "MEMINGO_ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD"
+            echo "MEMINGO_ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS"
+            echo "MEMINGO_ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      - name: Build Android package
+        env:
+          ANDROID_VERSION_CODE: ${{ github.run_number }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            node scripts/build-android.mjs --release
+          else
+            node scripts/build-android.mjs
+          fi
+
+      - name: Collect Android packages
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          mkdir -p release-android
+          if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
+            cp android/app/build/outputs/apk/release/app-release.apk "release-android/Memingo-IDE-${VERSION}-android-release.apk"
+            cp android/app/build/outputs/bundle/release/app-release.aab "release-android/Memingo-IDE-${VERSION}-android-release.aab"
+          else
+            cp android/app/build/outputs/apk/debug/app-debug.apk "release-android/Memingo-IDE-${VERSION}-android-debug.apk"
+          fi
+
+      - name: Upload Android packages
         uses: actions/upload-artifact@v4
         with:
           name: memingo-ide-android
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: release-android/*
           if-no-files-found: error
           retention-days: 14
 
   release-zip:
     name: Assemble all platform packages
-    needs: [package, android]
+    needs: [desktop, android]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download all packages
         uses: actions/download-artifact@v4
         with:
           path: release-files
-      - name: Create release ZIP
+
+      - name: Create release ZIP and checksums
         run: |
           mkdir -p release-bundle
           cp -R release-files/. release-bundle/
+          cp LICENSE release-bundle/LICENSE
           cat > release-bundle/README.txt <<'EOF'
           Memingo IDE - paquetes multiplataforma
 
-          memingo-ide-windows/: instaladores de Windows (NSIS)
-          memingo-ide-linux/: paquetes Linux (AppImage y DEB)
-          memingo-ide-android/: APK Android de depuración (no firmado para distribución)
+          memingo-ide-windows/: instalador NSIS y ZIP portable para Windows x64.
+          memingo-ide-linux/: AppImage, paquete DEB y archivo tar.gz para Linux x64.
+          memingo-ide-macos/: DMG y ZIP universal para macOS (Intel y Apple Silicon).
+          memingo-ide-android/: APK de depuración o APK/AAB firmados si el repositorio
+          tiene configurados los secretos de firma de Android.
 
-          El APK de esta compilación es de prueba. Para publicar Android en tiendas,
-          configura firma de release y revisa las capacidades móviles indicadas en el README.
+          Notas:
+          - Los builds de macOS sin certificado Apple están sin firmar. Si macOS los
+            bloquea, abre el DMG con clic derecho > Abrir o ejecuta:
+            xattr -dr com.apple.quarantine "/Applications/Memingo IDE.app"
+          - El APK de depuración no está firmado para distribución pública. Para
+            publicar en Google Play usa un build de release con keystore y el AAB.
+          - Verifica la integridad de cada archivo con SHA256SUMS.txt.
+
+          Proyecto: https://github.com/Reaccionador2Jeje/Memingo-IDE
           EOF
           cd release-bundle
+          find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
           zip -r ../Memingo-IDE-release.zip .
+
       - name: Upload combined ZIP
         uses: actions/upload-artifact@v4
         with:
@@ -115,9 +226,32 @@ jobs:
           path: Memingo-IDE-release.zip
           if-no-files-found: error
           retention-days: 30
+
+      - name: Upload checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: memingo-ide-checksums
+          path: release-bundle/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: Memingo-IDE-release.zip
+          name: Memingo IDE ${{ github.ref_name }}
           generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          fail_on_unmatched_files: false
+          overwrite_files: true
+          files: |
+            Memingo-IDE-release.zip
+            release-bundle/SHA256SUMS.txt
+            release-files/**/*.exe
+            release-files/**/*.zip
+            release-files/**/*.AppImage
+            release-files/**/*.deb
+            release-files/**/*.tar.gz
+            release-files/**/*.dmg
+            release-files/**/*.apk
+            release-files/**/*.aab

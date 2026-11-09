@@ -40,18 +40,63 @@ Install dependencies and build on the matching operating system:
 
 ```bash
 npm install
-npm run dist:win
-npm run dist:linux
+npm run dist:win    # Windows x64
+npm run dist:linux  # Linux x64
+npm run dist:mac    # macOS universal (Intel + Apple Silicon)
 ```
 
-Los builds locales no intentan publicar automáticamente en GitHub (`--publish never`). El paquete Linux de CI genera AppImage; se omite DEB hasta configurar un mantenedor con correo válido.
+Los builds locales no publican automáticamente en GitHub (`--publish never`). Los artefactos se escriben en `release/`.
 
-Generated files are written to `release/`.
+| Plataforma | Artefactos |
+| --- | --- |
+| Windows x64 | Instalador NSIS (`.exe`) y ZIP portable |
+| Linux x64 | AppImage, paquete `.deb` y `.tar.gz` |
+| macOS universal | `.dmg` y `.zip` para Intel y Apple Silicon |
+| Android | APK de depuración o APK/AAB firmados |
 
-- Windows: NSIS installer (`.exe`)
-- Linux: AppImage (portable; no maintainer email required)
+### Android
 
-GitHub Actions also builds the Windows NSIS installer and Linux AppImage when you manually run **Memingo IDE packages** or push a version tag such as `v0.2.0`. Download the resulting ZIP artifacts from the workflow run (available for 14 days).
+```bash
+npm run android:debug
+# APK: android/app/build/outputs/apk/debug/app-debug.apk
+
+npm run android:release
+# Requiere MEMINGO_ANDROID_KEYSTORE, MEMINGO_ANDROID_KEYSTORE_PASSWORD,
+# MEMINGO_ANDROID_KEY_ALIAS y MEMINGO_ANDROID_KEY_PASSWORD.
+# APK: android/app/build/outputs/apk/release/app-release.apk
+# AAB: android/app/build/outputs/bundle/release/app-release.aab
+```
+
+`android:debug` genera el proyecto Capacitor si no existe, sincroniza `mobile/` y compila el APK de depuración. `android:release` hace lo mismo y firma con el keystore indicado. El `versionName` se toma de `package.json` y el `versionCode` de `ANDROID_VERSION_CODE` (o de la versión semántica si no se define). Para compilar Android localmente necesitas Java 21 y el Android SDK; el flujo de GitHub Actions ya incluye ambos.
+
+Para preparar la firma:
+
+```bash
+keytool -genkeypair -v -keystore memingo-release.keystore -alias memingo \
+  -keyalg RSA -keysize 2048 -validity 10000
+base64 < memingo-release.keystore | tr -d '\n' > memingo-release.keystore.b64
+```
+
+### Releases automáticos
+
+El flujo **Memingo IDE packages** compila Windows, Linux, macOS y Android en runners nativos. Al hacer push a `main` o ejecutarlo manualmente, publica los artefactos temporales. Al publicar un tag `v*` (por ejemplo `v0.2.0`) también crea un GitHub Release con:
+
+- Instaladores y paquetes individuales de cada plataforma.
+- `Memingo-IDE-release.zip` con todo el contenido.
+- `SHA256SUMS.txt` para verificar la integridad.
+
+El tag debe coincidir con el campo `version` de `package.json`; el flujo falla si no coinciden.
+
+Secretos opcionales para builds firmados:
+
+| Secreto | Uso |
+| --- | --- |
+| `WINDOWS_CSC_LINK`, `WINDOWS_CSC_KEY_PASSWORD` | Certificado de firma para Windows |
+| `MACOS_CSC_LINK`, `MACOS_CSC_KEY_PASSWORD` | Certificado Developer ID para macOS |
+| `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` | Notarización de macOS |
+| `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | Firma del APK/AAB de Android |
+
+Sin esos secretos, Windows y macOS generan builds sin firmar y Android genera un APK de depuración. Los builds de macOS sin firma pueden requerir abrir la app con clic derecho > Abrir.
 
 **Android:** Memingo IDE includes a separate mobile-first editor in `mobile/`, packaged with Capacitor. The Android workspace now supports multiple file tabs, per-file local drafts, import/export, language selection, search, replace, basic delimiter diagnostics, automatic indentation and keyboard shortcuts. It remains a lightweight mobile edition: it does not yet include the desktop runtime process, full project explorer, Git/GitHub, agents, terminal or LSP integrations.
 
@@ -237,10 +282,10 @@ Las ediciones de renombrado y acciones rápidas se aplican en el archivo activo 
 
 ## Edición móvil Android
 
-El proyecto incluye una primera edición móvil basada en Capacitor, ubicada en `mobile/`. Permite editar código, conservar un borrador local, importar archivos de texto y exportarlos al dispositivo. Se genera un APK Android de depuración mediante el flujo **Memingo IDE packages**.
+El proyecto incluye una primera edición móvil basada en Capacitor, ubicada en `mobile/`. Permite editar código, conservar un borrador local, importar archivos de texto y exportarlos al dispositivo. El flujo **Memingo IDE packages** genera un APK de depuración y, si están configurados los secretos de firma, también un APK y un AAB de release.
 
-Esta primera edición Android es una aplicación móvil independiente y reducida: todavía no incorpora las funciones de escritorio que dependen de Electron, procesos del sistema o servidores externos (ejecución del runtime, terminal, Git, agentes OpenCode/Goose y LSP). El APK de depuración no está firmado para distribución pública.
+Esta primera edición Android es una aplicación móvil independiente y reducida: todavía no incorpora las funciones de escritorio que dependen de Electron, procesos del sistema o servidores externos (ejecución del runtime, terminal, Git, agentes OpenCode/Goose y LSP). El APK de depuración no está firmado para distribución pública; usa `npm run android:release` con un keystore para publicar.
 
 ## ZIP multiplataforma y releases
 
-El flujo **Memingo IDE packages** compila Windows, Linux y Android, descarga los tres artefactos y los reúne en `Memingo-IDE-release.zip`. En ejecuciones manuales, el ZIP aparece como artefacto `memingo-ide-all-platforms`. Al publicar un tag `v*`, el flujo también adjunta el ZIP a un GitHub Release. Los artefactos temporales se conservan 14 días y el ZIP combinado 30 días.
+El flujo **Memingo IDE packages** compila Windows, Linux, macOS y Android, descarga los cuatro artefactos y los reúne en `Memingo-IDE-release.zip`. En ejecuciones manuales, el ZIP aparece como artefacto `memingo-ide-all-platforms`. Al publicar un tag `v*`, el flujo adjunta al GitHub Release los paquetes individuales, el ZIP combinado y `SHA256SUMS.txt`. Los artefactos temporales se conservan 14 días y el ZIP combinado 30 días.

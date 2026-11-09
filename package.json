@@ -1,17 +1,35 @@
 {
   "name": "memingo-ide",
   "version": "0.1.0",
+  "private": true,
   "description": "Desktop IDE for the Memingo programming language",
   "main": "src/main.js",
+  "author": "Memingo IDE contributors",
+  "license": "BSL-1.0",
+  "homepage": "https://github.com/Reaccionador2Jeje/Memingo-IDE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Reaccionador2Jeje/Memingo-IDE.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Reaccionador2Jeje/Memingo-IDE/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "dist": "electron-builder",
-    "check": "node --check mobile/mobile.js && node --check src/main.js && node --check src/preload.js && node --check src/renderer.js && node --check src/languages/registry.js && node --check src/languages/lsp-client.js && node --check tests/language-registry.test.js && node --check tests/lsp-client.test.js && node --check src/agents/registry.js && node --check src/agents/adapter-contract.js && node --check tests/agents-registry.test.js && node --check tests/agent-adapters.test.js",
+    "check": "node --check mobile/mobile.js && node --check src/main.js && node --check src/preload.js && node --check src/renderer.js && node --check src/languages/registry.js && node --check src/languages/lsp-client.js && node --check tests/language-registry.test.js && node --check tests/lsp-client.test.js && node --check src/agents/registry.js && node --check src/agents/adapter-contract.js && node --check tests/agents-registry.test.js && node --check tests/agent-adapters.test.js && node --check tests/android-build-scripts.test.js && node --check scripts/build-android.mjs && node --check scripts/set-android-version.mjs && node --check scripts/configure-android-signing.mjs",
     "test": "node --test",
-    "dist:win": "electron-builder --win nsis --publish never",
-    "dist:linux": "electron-builder --linux AppImage --publish never",
-    "dist:all": "electron-builder --win nsis --linux AppImage --publish never"
+    "cap:sync": "npx cap sync",
+    "android:debug": "node scripts/build-android.mjs",
+    "android:release": "node scripts/build-android.mjs --release",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win --publish never",
+    "dist:linux": "electron-builder --linux --publish never",
+    "dist:mac": "electron-builder --mac --universal --publish never",
+    "dist:all": "electron-builder --win --linux --publish never"
   },
   "devDependencies": {
     "electron": "^37.2.6",
@@ -23,28 +41,88 @@
   "build": {
     "appId": "dev.atdev.memingoide",
     "productName": "Memingo IDE",
+    "copyright": "Copyright © 2026 Memingo IDE contributors",
+    "asar": true,
     "files": [
       "src/**/*",
-      "package.json"
+      "package.json",
+      "LICENSE"
     ],
-    "linux": {
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "artifactName": "Memingo-IDE-${version}-${os}-${arch}.${ext}",
+    "win": {
+      "icon": "build/icon.ico",
       "target": [
-        "AppImage",
-        "deb"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
-    "win": {
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Memingo IDE",
+      "deleteAppDataOnUninstall": false
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Development",
+      "maintainer": "Reaccionador2Jeje <Reaccionador2Jeje@users.noreply.github.com>",
+      "synopsis": "IDE for the Memingo programming language",
+      "description": "Memingo IDE is a desktop code editor for the Memingo programming language.",
       "target": [
-        "nsis"
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "tar.gz",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "mac": {
+      "icon": "build/icon.png",
+      "category": "public.app-category.developer-tools",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
       "target": [
-        "dmg"
+        {
+          "target": "dmg"
+        },
+        {
+          "target": "zip"
+        }
       ]
     },
-    "directories": {
-      "output": "release"
+    "dmg": {
+      "title": "Memingo IDE ${version}"
     }
   }
 }
