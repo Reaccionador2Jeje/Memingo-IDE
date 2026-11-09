@@ -34,6 +34,18 @@ npm install
 npm start
 ```
 
+## Memingo IDE Web
+
+Run the browser editor locally without code-server:
+
+```bash
+npm install
+npm run web
+# Open http://127.0.0.1:3000
+```
+
+You can choose another port with `npm run web -- --port 8080`. The server uses Node.js built-ins, serves the mobile/browser editor, and binds only to localhost. To launch it from the Memingo CLI, run `npm link` once in this repository, then use `memingo ide` or `memingo ide --port 8080`. See [docs/WEB.md](docs/WEB.md) for details and limitations.
+
 ## Build installers
 
 Install dependencies and build on the matching operating system:
