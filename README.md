@@ -50,7 +50,7 @@ Los builds locales no publican automáticamente en GitHub (`--publish never`). L
 | Plataforma | Artefactos |
 | --- | --- |
 | Windows x64 | Instalador NSIS (`.exe`) y ZIP portable |
-| Linux x64 | AppImage, paquete `.deb` y `.tar.gz` |
+| Linux x64 | AppImage, paquetes `.deb`, `.rpm` y pacman (`.pkg.tar.zst`), y `.tar.gz` |
 | macOS universal | `.dmg` y `.zip` para Intel y Apple Silicon |
 | Android | APK de depuración o APK/AAB firmados |
 

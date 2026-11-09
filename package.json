@@ -99,11 +99,35 @@
           ]
         },
         {
+          "target": "rpm",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "pacman",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
           "target": "tar.gz",
           "arch": [
             "x64"
           ]
         }
+      ]
+    },
+    "pacman": {
+      "artifactName": "Memingo-IDE-${version}-linux-${arch}.pkg.tar.zst",
+      "depends": [
+        "gtk3",
+        "nss",
+        "libxss",
+        "libnotify",
+        "libxtst",
+        "xdg-utils",
+        "at-spi2-core"
       ]
     },
     "mac": {

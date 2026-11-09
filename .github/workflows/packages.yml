@@ -102,6 +102,8 @@ jobs:
             release/*.dmg
             release/*.AppImage
             release/*.deb
+            release/*.rpm
+            release/*.pkg.tar.zst
             release/*.tar.gz
             release/*.blockmap
           if-no-files-found: error
@@ -200,7 +202,8 @@ jobs:
           Memingo IDE - paquetes multiplataforma
 
           memingo-ide-windows/: instalador NSIS y ZIP portable para Windows x64.
-          memingo-ide-linux/: AppImage, paquete DEB y archivo tar.gz para Linux x64.
+          memingo-ide-linux/: AppImage, paquetes DEB, RPM y pacman (.pkg.tar.zst)
+          y archivo tar.gz para Linux x64.
           memingo-ide-macos/: DMG y ZIP universal para macOS (Intel y Apple Silicon).
           memingo-ide-android/: APK de depuración o APK/AAB firmados si el repositorio
           tiene configurados los secretos de firma de Android.
@@ -251,6 +254,8 @@ jobs:
             release-files/**/*.zip
             release-files/**/*.AppImage
             release-files/**/*.deb
+            release-files/**/*.rpm
+            release-files/**/*.pkg.tar.zst
             release-files/**/*.tar.gz
             release-files/**/*.dmg
             release-files/**/*.apk
