@@ -39,3 +39,9 @@ test("las peticiones LSP rechazan posiciones inválidas",async()=>{
  const c=new LspClient();c.child={};c.document={uri:"file:///project/a.js"};
  await assert.rejects(c.hover({line:-1,character:0}));
 });
+
+test("Windows launches command shim servers through the platform shell",()=>{
+ const fs=require("node:fs");
+ const source=fs.readFileSync(require.resolve("../src/languages/lsp-client"),"utf8");
+ assert.match(source,/shell:windows/);
+});
