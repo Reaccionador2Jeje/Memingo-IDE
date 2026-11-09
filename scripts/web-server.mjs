@@ -105,7 +105,7 @@ function parseArgs(argv) {
   return options;
 }
 
-async function main() {
+export async function main() {
   const options = parseArgs(process.argv.slice(2));
   if (options.help) {
     console.log("Uso: memingo-ide-web [--host 127.0.0.1] [--port 3000]");
