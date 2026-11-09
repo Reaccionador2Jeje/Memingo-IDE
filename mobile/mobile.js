@@ -24,19 +24,31 @@ const MEMINGO_SUGGESTIONS = [
 ];
 function showSuggestions(){
  const panel=$("completionPanel"),list=$("completionList"),cursor=editor.selectionStart;
- const before=editor.value.slice(0,cursor),match=before.match(/[A-Za-z_][A-Za-z0-9_]*$/),prefix=match?match[0].toLowerCase():"";
- const results=MEMINGO_SUGGESTIONS.filter(item=>!prefix||item.label.toLowerCase().startsWith(prefix)).slice(0,16);
+ const before=editor.value.slice(0,cursor),match=before.match(/[A-Za-z_][A-Za-z0-9_]*$/),prefix=match?match[0]:"";
+ const results=window.MemingoMobileLSP.complete(editor.value,prefix);
  list.replaceChildren();
  if(!results.length){const p=document.createElement("p");p.textContent="No hay sugerencias para este texto.";list.append(p)}
  for(const item of results){const button=document.createElement("button");button.type="button";button.textContent=item.label+" — "+item.detail;button.addEventListener("click",()=>{const start=cursor-(match?match[0].length:0);editor.focus();editor.setRangeText(item.label,start,cursor,"end");changed();panel.hidden=true;});list.append(button)}
  panel.hidden=false;
 }
-function checkCode(){const source=editor.value,stack=[],errors=[];let quote=null,escaped=false,line=1;for(let i=0;i<source.length;i++){const c=source[i];if(c==="\n")line++;if(quote){if(escaped){escaped=false;continue}if(c==="\\"){escaped=true;continue}if(c===quote)quote=null;continue}if(c==='"'||c==="'"||c==="\x60"){quote=c;continue}if(c==="("||c==="["||c==="{")stack.push({c,line});else if(c===")"||c==="]"||c==="}"){const expected={")":"(","]":"[","}":"{"}[c],last=stack.pop();if(!last||last.c!==expected)errors.push("Línea "+line+": delimitador "+c+" sin pareja")}}if(quote)errors.push("Hay una cadena sin cerrar");for(const item of stack)errors.push("Línea "+item.line+": falta cerrar "+item.c);const list=$("diagnosticList");list.replaceChildren();for(const msg of errors){const li=document.createElement("li");li.textContent=msg;list.append(li)}if(!errors.length){const li=document.createElement("li");li.textContent="No se detectaron errores básicos de delimitadores.";list.append(li)}$("diagnostics").hidden=false;$("diagnosticStatus").textContent=errors.length?errors.length+" problema(s)":"Sin problemas básicos"}
+function showHover(){
+ const before=editor.value.slice(0,editor.selectionStart),after=editor.value.slice(editor.selectionStart);
+ const left=before.match(/[A-Za-z_][A-Za-z0-9_]*$/),right=after.match(/^[A-Za-z0-9_]*/),word=(left?left[0]:"")+(right?right[0]:"");
+ const info=window.MemingoMobileLSP.hover(editor.value,word);
+ alert(info?word+"\\n\\n"+info:"No hay información para este símbolo.");
+}
+function checkCode(){
+ const diagnostics=window.MemingoMobileLSP.analyze(editor.value),list=$("diagnosticList");
+ list.replaceChildren();
+ for(const item of diagnostics){const li=document.createElement("li"),button=document.createElement("button");button.type="button";button.textContent="Línea "+(item.line+1)+": "+item.message;button.addEventListener("click",()=>{const lines=editor.value.split("\\n");let offset=0;for(let i=0;i<item.line;i++)offset+=(lines[i]||"").length+1;offset+=item.column||0;editor.focus();editor.setSelectionRange(offset,Math.min(editor.value.length,offset+1));updateCursor()});li.append(button);list.append(li)}
+ if(!diagnostics.length){const li=document.createElement("li");li.textContent="No se detectaron errores de delimitadores o cadenas.";list.append(li)}
+ $("diagnostics").hidden=false;$("diagnosticStatus").textContent=diagnostics.length?diagnostics.length+" problema(s)":"Sin problemas básicos";
+}
 $("newFile").onclick=()=>addFile();$("saveFile").onclick=()=>{persist();const f=active();if(f)f.dirty=false;renderTabs();state.textContent="Guardado en este dispositivo"};
 $("openFile").onclick=()=>picker.click();picker.onchange=async()=>{const file=picker.files?.[0];if(!file)return;if(file.size>2*1024*1024){alert("El archivo supera 2 MB.");picker.value="";return}const ext=file.name.split(".").pop().toLowerCase(),lang=({js:"javascript",ts:"typescript",py:"python",html:"html",css:"css",json:"json",mgo:"memingo",mgoa:"memingo"})[ext]||"text";addFile(file.name,await file.text(),lang);picker.value=""};
 $("exportFile").onclick=()=>{persist();const f=active();if(!f)return;const url=URL.createObjectURL(new Blob([editor.value],{type:"text/plain;charset=utf-8"})),a=document.createElement("a");a.href=url;a.download=cleanName(nameInput.value);a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
-$("findButton").onclick=()=>openSearch(false);$("replaceButton").onclick=()=>openSearch(true);$("findNext").onclick=findNext;$("replaceOne").onclick=replaceOne;$("replaceAll").onclick=replaceAll;$("closeSearch").onclick=()=>$("searchPanel").hidden=true;$("checkButton").onclick=checkCode;$("suggestButton").onclick=showSuggestions;
-editor.addEventListener("input",changed);editor.addEventListener("click",updateCursor);editor.addEventListener("keyup",updateCursor);editor.addEventListener("scroll",updateGutter);nameInput.addEventListener("input",changed);$("language").onchange=()=>{$("languageStatus").textContent=languages[$("language").value];changed()};
+$("findButton").onclick=()=>openSearch(false);$("replaceButton").onclick=()=>openSearch(true);$("findNext").onclick=findNext;$("replaceOne").onclick=replaceOne;$("replaceAll").onclick=replaceAll;$("closeSearch").onclick=()=>$("searchPanel").hidden=true;$("checkButton").onclick=checkCode;$("suggestButton").onclick=showSuggestions;$("completeButton").onclick=showSuggestions;$("infoButton").onclick=showHover;
+editor.addEventListener("input",()=>{changed();if($("language").value==="memingo"){clearTimeout(window.memingoAnalysisTimer);window.memingoAnalysisTimer=setTimeout(checkCode,450)}});editor.addEventListener("click",updateCursor);editor.addEventListener("keyup",updateCursor);editor.addEventListener("scroll",updateGutter);nameInput.addEventListener("input",changed);$("language").onchange=()=>{$("languageStatus").textContent=languages[$("language").value];changed()};
 editor.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){e.preventDefault();$("saveFile").click()}else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="f"){e.preventDefault();openSearch(false)}else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="h"){e.preventDefault();openSearch(true)}else if(e.key==="Tab"){e.preventDefault();editor.setRangeText("  ",editor.selectionStart,editor.selectionEnd,"end");changed()}else if(e.key==="Enter"){const pos=editor.selectionStart,before=editor.value.slice(0,pos),indent=(before.match(/(^|\n)([ \t]*)[^\n]*$/)||[])[2]||"";if(indent){e.preventDefault();editor.setRangeText("\n"+indent,pos,editor.selectionEnd,"end");changed()}}});
 try{const saved=JSON.parse(localStorage.getItem(KEY)||"null");if(Array.isArray(saved)&&saved.length){files=saved.filter(f=>f&&typeof f.text==="string").map(f=>({...f,id:f.id||id(),name:cleanName(f.name),language:languages[f.language]?f.language:"memingo",dirty:false}));} }catch{}
 if(!files.length){const old=localStorage.getItem("memingo.mobile.draft.v1");try{const d=JSON.parse(old||"null");files=[{id:id(),name:cleanName(d?.name),text:String(d?.text||""),language:"memingo",dirty:false}]}catch{files=[{id:id(),name:"main.mgo",text:"",language:"memingo",dirty:false}]}}
