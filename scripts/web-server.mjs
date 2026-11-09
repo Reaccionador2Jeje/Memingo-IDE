@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import http from "node:http";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { readFile, realpath, stat } from "node:fs/promises";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -125,7 +125,18 @@ async function main() {
   });
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+async function isMainModule() {
+  if (!process.argv[1]) return false;
+  try {
+    const invokedPath = await realpath(path.resolve(process.argv[1]));
+    const modulePath = await realpath(fileURLToPath(import.meta.url));
+    return invokedPath === modulePath;
+  } catch {
+    return false;
+  }
+}
+
+if (await isMainModule()) {
   main().catch(error => {
     console.error("Memingo IDE Web:", error.message);
     process.exitCode = 1;
