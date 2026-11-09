@@ -20,7 +20,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "check": "node --check mobile/mobile.js && node --check mobile/memingo-lsp.js && node --check src/main.js && node --check src/preload.js && node --check src/renderer.js && node --check src/languages/registry.js && node --check src/languages/lsp-client.js && node --check tests/language-registry.test.js && node --check tests/lsp-client.test.js && node --check src/agents/registry.js && node --check src/agents/adapter-contract.js && node --check tests/agents-registry.test.js && node --check tests/agent-adapters.test.js && node --check tests/android-build-scripts.test.js && node --check scripts/build-android.mjs && node --check scripts/set-android-version.mjs && node --check scripts/configure-android-signing.mjs",
+    "check": "node --check scripts/web-server.mjs && node --check tests/web-server.test.js && node --check mobile/mobile.js && node --check mobile/memingo-lsp.js && node --check src/main.js && node --check src/preload.js && node --check src/renderer.js && node --check src/languages/registry.js && node --check src/languages/lsp-client.js && node --check tests/language-registry.test.js && node --check tests/lsp-client.test.js && node --check src/agents/registry.js && node --check src/agents/adapter-contract.js && node --check tests/agents-registry.test.js && node --check tests/agent-adapters.test.js && node --check tests/android-build-scripts.test.js && node --check scripts/build-android.mjs && node --check scripts/set-android-version.mjs && node --check scripts/configure-android-signing.mjs",
     "test": "node --test",
     "cap:sync": "npx cap sync",
     "android:debug": "node scripts/build-android.mjs",
@@ -29,7 +29,8 @@
     "dist:win": "electron-builder --win --publish never",
     "dist:linux": "electron-builder --linux --publish never",
     "dist:mac": "electron-builder --mac --universal --publish never",
-    "dist:all": "electron-builder --win --linux --publish never"
+    "dist:all": "electron-builder --win --linux --publish never",
+    "web": "node scripts/web-server.mjs"
   },
   "devDependencies": {
     "electron": "^37.2.6",
@@ -45,6 +46,8 @@
     "asar": true,
     "files": [
       "src/**/*",
+      "mobile/**/*",
+      "scripts/web-server.mjs",
       "package.json",
       "LICENSE"
     ],
@@ -148,5 +151,8 @@
     "dmg": {
       "title": "Memingo IDE ${version}"
     }
+  },
+  "bin": {
+    "memingo-ide-web": "scripts/web-server.mjs"
   }
 }
