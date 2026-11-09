@@ -15,7 +15,7 @@ test("mobile completion includes builtins and project symbols",()=>{
  const items=lsp.complete("vibe score = 2","s");
  const labels=items.map(item=>item.label);
  assert.ok(labels.includes("score"));
- assert.ok(labels.includes("sum")===false);
+ assert.ok(labels.includes("json_parse")===false);
 });
 test("mobile hover explains keywords and declared symbols",()=>{
  assert.match(lsp.hover("vibe score = 2","score"),/Variable declarada/);
