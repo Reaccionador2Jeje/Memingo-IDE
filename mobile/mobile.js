@@ -40,7 +40,7 @@ function showHover(){
 function checkCode(){
  const diagnostics=window.MemingoMobileLSP.analyze(editor.value),list=$("diagnosticList");
  list.replaceChildren();
- for(const item of diagnostics){const li=document.createElement("li"),button=document.createElement("button");button.type="button";button.textContent="Línea "+(item.line+1)+": "+item.message;button.addEventListener("click",()=>{const lines=editor.value.split("\\n");let offset=0;for(let i=0;i<item.line;i++)offset+=(lines[i]||"").length+1;offset+=item.column||0;editor.focus();editor.setSelectionRange(offset,Math.min(editor.value.length,offset+1));updateCursor()});li.append(button);list.append(li)}
+ for(const item of diagnostics){const li=document.createElement("li"),button=document.createElement("button");button.type="button";button.textContent="Línea "+(item.line+1)+": "+item.message;button.addEventListener("click",()=>{const lines=editor.value.split("\n");let offset=0;for(let i=0;i<item.line;i++)offset+=(lines[i]||"").length+1;offset+=item.column||0;editor.focus();editor.setSelectionRange(offset,Math.min(editor.value.length,offset+1));updateCursor()});li.append(button);list.append(li)}
  if(!diagnostics.length){const li=document.createElement("li");li.textContent="No se detectaron errores de delimitadores o cadenas.";list.append(li)}
  $("diagnostics").hidden=false;$("diagnosticStatus").textContent=diagnostics.length?diagnostics.length+" problema(s)":"Sin problemas básicos";
 }
