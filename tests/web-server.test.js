@@ -1,6 +1,5 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createServer } from "node:http";
 import { createWebServer } from "../scripts/web-server.mjs";
 
 async function withServer(run) {
