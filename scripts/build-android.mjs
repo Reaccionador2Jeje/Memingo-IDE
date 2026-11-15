@@ -11,8 +11,10 @@ function run(command, args, cwd = root) {
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status || 1);
 }
+run(process.execPath, ["scripts/build-native-auth.mjs"]);
 if (!fs.existsSync(path.join(root, "android"))) run(npx, ["cap", "add", "android"]);
 run(npx, ["cap", "sync", "android"]);
+run(process.execPath, ["scripts/configure-android-oauth.mjs"]);
 run(process.execPath, ["scripts/set-android-version.mjs"]);
 if (release) run(process.execPath, ["scripts/configure-android-signing.mjs"]);
 const gradle = path.join(root, "android", isWindows ? "gradlew.bat" : "gradlew");
