@@ -114,9 +114,11 @@ Sin esos secretos, Windows y macOS generan builds sin firmar y Android genera un
 
 ### AtDev Accounts integration
 
-The planned shared identity service is `https://atdev-accounts.onrender.com`. The mobile client does not send passwords or tokens to guessed routes. Authentication and account sync will be enabled after the service's documented API contract (OpenAPI/schema, endpoint paths, request/response fields, token refresh and CORS policy) is available. The account service URL alone is not enough to implement a safe login flow.
+The Android editor now supports sign-in with **AtDev Accounts** using the registered public OIDC client `memingo-ide-android`. It uses the system browser, Authorization Code + PKCE (S256), validates the ID token signature and OIDC claims against the issuer's JWKS, and checks the returned `state` and `nonce`. The client secret is never embedded in the APK. The access token remains in memory only; the current mobile edition does not persist refresh tokens or promise a restored login after the app closes.
 
- An Android edition requires a separate mobile adaptation of the renderer and replacement of Electron-only file, process, Git, terminal and LSP integrations with Android-compatible services. No Android APK is published by this workflow yet.
+The Android build bundles the Capacitor Browser and App plugins and registers the custom callback `dev.atdev.memingoide://oauth/callback` in the generated manifest. The AtDev Accounts Render blueprint must be synchronized and redeployed with the Capacitor origins in `ALLOWED_ORIGINS` before token exchange and UserInfo requests can succeed. See the [Android OIDC integration guide](https://github.com/Reaccionador2Jeje/atdev-accounts/blob/main/docs/MEMINGO_ANDROID_OIDC.md).
+
+The mobile edition remains lighter than the desktop app: Electron-only process execution, terminal, Git, agents and desktop LSP integrations are not included. Android packages are built by the Memingo IDE packages workflow.
 
 ## How code execution works
 
