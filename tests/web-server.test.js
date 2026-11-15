@@ -42,6 +42,16 @@ test("rejects methods other than GET and HEAD", async () => {
   });
 });
 
+test("blocks encoded path traversal and malformed URL paths", async () => {
+  await withServer(async base => {
+    const traversal = await fetch(base + "/%2e%2e%2fpackage.json");
+    assert.equal(traversal.status, 403);
+
+    const malformed = await fetch(base + "/%E0%A4%A");
+    assert.equal(malformed.status, 400);
+  });
+});
+
 test("does not allow binding to a public interface", () => {
   assert.throws(() => createWebServer({ host: "0.0.0.0" }), /localhost/);
 });
