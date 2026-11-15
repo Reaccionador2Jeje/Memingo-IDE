@@ -11,7 +11,7 @@
 <body>
   <header><div class="brand"><span class="logo">M</span><span>memingo <small>IDE mobile</small></span></div><span id="saveState">Guardado local</span></header>
   <nav class="toolbar">
-    <button id="newFile">Nuevo</button><button id="openFile">Abrir</button><button id="saveFile">Guardar</button><button id="exportFile">Exportar</button>
+    <button id="accountSignIn" type="button">Iniciar sesión con AtDev</button><button id="accountSignOut" type="button" hidden>Cerrar sesión</button><span id="accountStatus" role="status" aria-live="polite">No has iniciado sesión en AtDev Accounts.</span><button id="newFile">Nuevo</button><button id="openFile">Abrir</button><button id="saveFile">Guardar</button><button id="exportFile">Exportar</button>
     <button id="completeButton">Completar</button><button id="infoButton">Info</button><button id="findButton">Buscar</button><button id="replaceButton">Reemplazar</button><button id="checkButton">Revisar</button><button id="suggestButton">Sugerir</button>
     <input id="filePicker" type="file" accept=".mgo,.mgoa,.txt,.js,.ts,.py,.html,.css,.json,.md" hidden>
   </nav>
@@ -32,6 +32,6 @@
     <section id="diagnostics" class="panel" hidden><strong>Diagnósticos</strong><ul id="diagnosticList"></ul></section>
     <section class="help"><strong>Memingo IDE Mobile</strong><p>Ahora incluye pestañas, borradores por archivo, búsqueda, reemplazo, atajos, sangría automática y revisión básica de delimitadores. Incluye análisis local, diagnósticos por línea, autocompletado, información contextual y símbolos para Memingo. El servidor LSP oficial por stdio sigue disponible en escritorio; esta edición móvil usa un motor local compatible con sus funciones principales.</p></section>
   </main>
-  <script src="memingo-lsp.js"></script>\n  <script src="mobile.js"></script>
+  <script src="memingo-lsp.js"></script>\n  <script src="native-auth.bundle.js"></script>\n  <script src="mobile.js"></script>
 </body>
 </html>
