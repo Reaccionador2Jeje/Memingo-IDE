@@ -3,35 +3,94 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#101116">
+  <meta name="theme-color" content="#181818">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; style-src 'self'; script-src 'self'; connect-src 'self' https://atdev-accounts.onrender.com;">
   <title>Memingo IDE Mobile</title>
   <link rel="stylesheet" href="mobile.css">
 </head>
 <body>
-  <header><div class="brand"><span class="logo">M</span><span>memingo <small>IDE mobile</small></span></div><span id="saveState">Guardado local</span></header>
-  <nav class="toolbar">
-    <button id="accountSignIn" type="button">Iniciar sesión con AtDev</button><button id="accountSignOut" type="button" hidden>Cerrar sesión</button><span id="accountStatus" role="status" aria-live="polite">No has iniciado sesión en AtDev Accounts.</span><button id="newFile">Nuevo</button><button id="openFile">Abrir</button><button id="saveFile">Guardar</button><button id="exportFile">Exportar</button>
-    <button id="completeButton">Completar</button><button id="infoButton">Info</button><button id="findButton">Buscar</button><button id="replaceButton">Reemplazar</button><button id="checkButton">Revisar</button><button id="suggestButton">Sugerir</button>
-    <input id="filePicker" type="file" accept=".mgo,.mgoa,.txt,.js,.ts,.py,.html,.css,.json,.md" hidden>
-  </nav>
-  <div id="tabs" class="tabs" role="tablist" aria-label="Archivos abiertos"></div>
-  <main>
-    <div class="filebar"><input id="fileName" value="main.mgo" aria-label="Nombre del archivo"><select id="language" aria-label="Lenguaje"><option value="memingo">Memingo</option><option value="javascript">JavaScript</option><option value="typescript">TypeScript</option><option value="python">Python</option><option value="html">HTML</option><option value="css">CSS</option><option value="json">JSON</option><option value="text">Texto</option></select></div>
+  <header class="mobile-titlebar">
+    <div class="brand"><span class="logo">M</span><span>Memingo <small>IDE</small></span></div>
+    <span id="saveState" class="save-state">Guardado local</span>
+  </header>
+
+  <section class="mobile-screen active" data-mobile-view="editor">
+    <nav class="file-toolbar" aria-label="Acciones de archivo">
+      <button id="newFile" type="button">＋ Nuevo</button>
+      <button id="openFile" type="button">Abrir</button>
+      <button id="saveFile" type="button">Guardar</button>
+      <button id="exportFile" type="button">Exportar</button>
+      <input id="filePicker" type="file" accept=".mgo,.mgoa,.txt,.js,.ts,.py,.html,.css,.json,.md" hidden>
+    </nav>
+    <div id="tabs" class="tabs" role="tablist" aria-label="Archivos abiertos"></div>
+    <main class="editor-main">
+      <div class="filebar">
+        <input id="fileName" value="main.mgo" aria-label="Nombre del archivo">
+        <select id="language" aria-label="Lenguaje">
+          <option value="memingo">Memingo</option><option value="javascript">JavaScript</option><option value="typescript">TypeScript</option><option value="python">Python</option><option value="html">HTML</option><option value="css">CSS</option><option value="json">JSON</option><option value="text">Texto</option>
+        </select>
+      </div>
+      <div class="editor-wrap">
+        <div id="gutter" aria-hidden="true">1</div>
+        <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Editor de código" placeholder="# Escribe código aquí..."></textarea>
+      </div>
+      <footer class="statusbar">
+        <span id="cursorStatus">Línea 1 · Columna 1</span>
+        <span id="diagnosticStatus">Sin revisar</span>
+        <span id="languageStatus">Memingo</span>
+      </footer>
+    </main>
+  </section>
+
+  <section class="mobile-screen tools-screen" data-mobile-view="tools" hidden>
+    <div class="screen-heading"><span>HERRAMIENTAS</span><small>Asistencia para editar código</small></div>
+    <div class="tool-grid">
+      <button id="completeButton" type="button">✦ Completar</button>
+      <button id="infoButton" type="button">ⓘ Información</button>
+      <button id="findButton" type="button">⌕ Buscar</button>
+      <button id="replaceButton" type="button">⇄ Reemplazar</button>
+      <button id="checkButton" type="button">✓ Revisar código</button>
+      <button id="suggestButton" type="button">✧ Sugerir</button>
+    </div>
     <section id="searchPanel" class="search-panel" hidden>
+      <div class="section-label">BUSCAR Y REEMPLAZAR</div>
       <input id="searchInput" placeholder="Buscar texto" aria-label="Buscar texto">
       <input id="replaceInput" placeholder="Reemplazar por" aria-label="Reemplazar por">
-      <button id="findNext">Siguiente</button><button id="replaceOne">Reemplazar</button><button id="replaceAll">Todo</button><button id="closeSearch" aria-label="Cerrar búsqueda">×</button>
+      <div class="search-actions">
+        <button id="findNext" type="button">Siguiente</button>
+        <button id="replaceOne" type="button">Reemplazar</button>
+        <button id="replaceAll" type="button">Todo</button>
+        <button id="closeSearch" type="button" aria-label="Cerrar búsqueda">×</button>
+      </div>
     </section>
-    <div class="editor-wrap">
-      <div id="gutter" aria-hidden="true">1</div>
-      <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Editor de código" placeholder="# Escribe código aquí..."></textarea>
-    </div>
-    <footer class="statusbar"><span id="cursorStatus">Línea 1 · Columna 1</span><span id="diagnosticStatus">Sin revisar</span><span id="languageStatus">Memingo</span></footer>
     <section id="completionPanel" class="panel" hidden><strong>Sugerencias Memingo</strong><div id="completionList"></div></section>
     <section id="diagnostics" class="panel" hidden><strong>Diagnósticos</strong><ul id="diagnosticList"></ul></section>
-    <section class="help"><strong>Memingo IDE Mobile</strong><p>Ahora incluye pestañas, borradores por archivo, búsqueda, reemplazo, atajos, sangría automática y revisión básica de delimitadores. Incluye análisis local, diagnósticos por línea, autocompletado, información contextual y símbolos para Memingo. El servidor LSP oficial por stdio sigue disponible en escritorio; esta edición móvil usa un motor local compatible con sus funciones principales.</p></section>
-  </main>
+  </section>
+
+  <section class="mobile-screen account-screen" data-mobile-view="account" hidden>
+    <div class="screen-heading"><span>CUENTA Y ACERCA DE</span><small>Servicios de AtDev</small></div>
+    <div class="account-card">
+      <div class="account-logo">A</div>
+      <strong>AtDev Accounts</strong>
+      <p id="accountStatus" role="status" aria-live="polite">No has iniciado sesión en AtDev Accounts.</p>
+      <div class="account-actions">
+        <button id="accountSignIn" type="button">Iniciar sesión con AtDev</button>
+        <button id="accountSignOut" type="button" hidden>Cerrar sesión</button>
+      </div>
+    </div>
+    <div class="about-card">
+      <strong>Memingo IDE Mobile</strong>
+      <p>Editor de código para crear y revisar proyectos desde Android. Incluye pestañas, borradores locales, búsqueda, reemplazo, análisis, diagnósticos y autocompletado para Memingo.</p>
+      <p>El servidor LSP oficial por stdio sigue disponible en escritorio; esta edición móvil utiliza un motor local para sus funciones principales.</p>
+    </div>
+  </section>
+
+  <nav class="bottom-nav" aria-label="Navegación principal">
+    <button type="button" class="active" data-mobile-tab="editor" aria-current="page"><span>▤</span>Editor</button>
+    <button type="button" data-mobile-tab="tools"><span>✦</span>Herramientas</button>
+    <button type="button" data-mobile-tab="account"><span>◉</span>Cuenta</button>
+  </nav>
+
   <script src="memingo-lsp.js"></script>
   <script src="native-auth.bundle.js"></script>
   <script src="mobile.js"></script>
