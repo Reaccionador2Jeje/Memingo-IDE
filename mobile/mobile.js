@@ -73,7 +73,7 @@ function randomBase64Url(byteLength = 32) {
   const bytes = crypto.getRandomValues(new Uint8Array(byteLength));
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
 function decodeBase64Url(value) {
@@ -263,7 +263,7 @@ async function beginAccountLogin() {
     const verifier = randomBase64Url(32);
     const challengeBytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
     const challenge = btoa(String.fromCharCode(...new Uint8Array(challengeBytes)))
-      .replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+      .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
     const state = randomBase64Url(32);
     const nonce = randomBase64Url(32);
     pendingAccountLogin = { verifier, state, nonce };
