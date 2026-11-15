@@ -364,6 +364,8 @@ async function openProject() {
     if (!project) return;
     projectPath = project.path;
     pathLabel.textContent = project.path;
+    const projectTitle = document.getElementById("windowProjectName");
+    if (projectTitle) projectTitle.textContent = project.name || basename(project.path);
     explorerRoot.replaceChildren();
     const heading = document.createElement("div");
     heading.className = "project-name";
@@ -1434,4 +1436,55 @@ document.getElementById("saveGitConflict").addEventListener("click", saveGitConf
 document.getElementById("stageGitConflict").addEventListener("click", stageGitConflict);
 document.querySelectorAll("[data-git]").forEach(button => {
   button.addEventListener("click", () => runGitAction(button.dataset.git));
+});
+
+
+// Navegación del workbench y paneles como en un IDE profesional.
+const sidebarTitle = document.getElementById("sidebarTitle");
+const sidebarLabels = {
+  explorer: "EXPLORADOR",
+  "source-control": "CONTROL DE CÓDIGO FUENTE",
+  agents: "AGENTES",
+  about: "ACERCA DE MEMINGO",
+};
+function activateSidebarView(viewName) {
+  const known = Object.hasOwn(sidebarLabels, viewName) ? viewName : "explorer";
+  document.querySelectorAll("[data-sidebar-view]").forEach((view) => {
+    view.classList.toggle("active", view.dataset.sidebarView === known);
+  });
+  document.querySelectorAll(".activity-button[data-view]").forEach((button) => {
+    const active = button.dataset.view === known;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  if (sidebarTitle) sidebarTitle.textContent = sidebarLabels[known];
+  document.body.classList.remove("sidebar-hidden");
+}
+document.querySelectorAll(".activity-button[data-view]").forEach((button) => {
+  button.addEventListener("click", () => activateSidebarView(button.dataset.view));
+});
+document.getElementById("toggleSidebar")?.addEventListener("click", () => {
+  document.body.classList.toggle("sidebar-hidden");
+});
+document.getElementById("togglePanel")?.addEventListener("click", () => {
+  document.body.classList.toggle("panel-hidden");
+});
+document.addEventListener("keydown", (event) => {
+  if (event.altKey || event.shiftKey && !event.ctrlKey) return;
+  if (event.ctrlKey && event.key.toLowerCase() === "b") {
+    event.preventDefault();
+    document.body.classList.toggle("sidebar-hidden");
+  }
+  if (event.ctrlKey && event.key.toLowerCase() === "j") {
+    event.preventDefault();
+    document.body.classList.toggle("panel-hidden");
+  }
+  if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "e") {
+    event.preventDefault();
+    activateSidebarView("explorer");
+  }
+  if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "g") {
+    event.preventDefault();
+    activateSidebarView("source-control");
+  }
 });
