@@ -4,7 +4,8 @@
 
 ## Current features
 
-- Dark desktop workspace.
+- VS Code-style desktop workbench with an activity bar, left explorer/source-control/agents sidebar, editor tabs, bottom terminal panel, and status bar.
+- Collapsible sidebar (`Ctrl+B`) and bottom panel (`Ctrl+J`), with dedicated activity views for Explorer, Git and coding agents.
 - Open a project folder and browse nested Memingo files and common text/source formats (JavaScript, TypeScript, HTML, CSS, Python, JSON, Markdown, etc.).
 - Basic Memingo syntax highlighting for comments, strings, keywords, values and numbers.
 - Multiple open files with independent tabs and unsaved-change indicators.
