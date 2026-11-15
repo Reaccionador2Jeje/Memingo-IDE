@@ -62,9 +62,9 @@ Los builds locales no publican automáticamente en GitHub (`--publish never`). L
 
 | Plataforma | Artefactos |
 | --- | --- |
-| Windows x64 | Instalador NSIS (`.exe`) y ZIP portable |
-| Linux x64 | AppImage, paquetes `.deb`, `.rpm` y pacman (`.pkg.tar.zst`), y `.tar.gz` |
-| macOS universal | `.dmg` y `.zip` para Intel y Apple Silicon |
+| Windows x64 | Instalador NSIS `.exe` con asistente, selección de carpeta, accesos directos y desinstalador |
+| Linux x64 | Paquete instalable `.deb` |
+| macOS universal | Imagen `.dmg` con acceso directo a Aplicaciones para Intel y Apple Silicon |
 | Android | APK de depuración o APK/AAB firmados |
 
 ### Android
@@ -111,7 +111,7 @@ Secretos opcionales para builds firmados:
 
 Sin esos secretos, Windows y macOS generan builds sin firmar y Android genera un APK de depuración. Los builds de macOS sin firma pueden requerir abrir la app con clic derecho > Abrir.
 
-**Android:** Memingo IDE includes a separate mobile-first editor in `mobile/`, packaged with Capacitor. The Android workspace now supports multiple file tabs, per-file local drafts, import/export, language selection, search, replace, basic delimiter diagnostics, automatic indentation and keyboard shortcuts. It remains a lightweight mobile edition: it does not yet include the desktop runtime process, full project explorer, Git/GitHub, agents, terminal or LSP integrations.
+**Android:** Memingo IDE includes a touch-first mobile workbench in `mobile/`, packaged with Capacitor. It now has a compact title bar, file tabs, editor workspace, status bar and bottom navigation for Editor, Tools and Account. The mobile workspace supports multiple file tabs, per-file local drafts, import/export, language selection, search, replace, basic delimiter diagnostics, automatic indentation and keyboard shortcuts. It remains a lightweight mobile edition: it does not yet include the desktop runtime process, full project explorer, Git/GitHub, agents, terminal or desktop LSP integrations.
 
 ### AtDev Accounts integration
 
@@ -301,9 +301,9 @@ El proyecto incluye una primera edición móvil basada en Capacitor, ubicada en 
 
 Esta primera edición Android es una aplicación móvil independiente y reducida: todavía no incorpora las funciones de escritorio que dependen de Electron, procesos del sistema o servidores externos (ejecución del runtime, terminal, Git, agentes OpenCode/Goose y LSP). El APK de depuración no está firmado para distribución pública; usa `npm run android:release` con un keystore para publicar.
 
-## ZIP multiplataforma y releases
+## Paquetes multiplataforma y releases
 
-El flujo **Memingo IDE packages** compila Windows, Linux, macOS y Android, descarga los cuatro artefactos y los reúne en `Memingo-IDE-release.zip`. En ejecuciones manuales, el ZIP aparece como artefacto `memingo-ide-all-platforms`. Al publicar un tag `v*`, el flujo adjunta al GitHub Release los paquetes individuales, el ZIP combinado y `SHA256SUMS.txt`. Los artefactos temporales se conservan 14 días y el ZIP combinado 30 días.
+El flujo **Memingo IDE packages** compila el instalador EXE de Windows, el DMG universal de macOS, el paquete DEB de Linux y el APK/AAB de Android, descarga los artefactos y los reúne en `Memingo-IDE-release.zip`. En ejecuciones manuales, el ZIP aparece como artefacto `memingo-ide-all-platforms`. Al publicar un tag `v*`, el flujo adjunta al GitHub Release los paquetes individuales, el ZIP combinado y `SHA256SUMS.txt`. Los artefactos temporales se conservan 14 días y el ZIP combinado 30 días.
 
 ## Walletie compatibility
 
