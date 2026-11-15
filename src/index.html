@@ -9,7 +9,11 @@
 </head>
 <body>
   <header class="titlebar">
-    <div class="brand"><div class="logo">M</div><span>memingo<span class="muted"> IDE</span></span><span class="version">0.1.0</span></div>
+    <div class="titlebar-left">
+      <div class="brand"><div class="logo">M</div><span>memingo<span class="muted"> IDE</span></span><span class="version">0.1.0</span></div>
+      <button id="toggleSidebar" class="titlebar-icon" type="button" title="Mostrar u ocultar barra lateral (Ctrl+B)" aria-label="Mostrar u ocultar barra lateral">☰</button>
+    </div>
+    <div class="window-title">Memingo IDE <span>—</span> <span id="windowProjectName">Sin proyecto</span></div>
     <div class="top-actions">
       <button id="projectBtn" class="quiet">Abrir proyecto</button>
       <button id="newBtn" class="quiet">Nuevo</button>
@@ -19,10 +23,17 @@
       <button id="formatBtn" class="quiet" title="Formatear con Memingo">Formatear</button>
       <button id="debugBtn" class="quiet" title="Ejecutar con traza de depuración">Depurar</button>
       <button id="runBtn" class="run"><span>▶</span> Ejecutar</button>
+      <button id="togglePanel" class="titlebar-icon" type="button" title="Mostrar u ocultar panel inferior (Ctrl+J)" aria-label="Mostrar u ocultar panel inferior">▱</button>
     </div>
   </header>
   <main class="workspace">
-    <aside class="activity"><div class="active">▤</div><div>⌕</div><div>⚙</div><div class="bottom">?</div></aside>
+    <aside class="activity" aria-label="Barra de actividad">
+      <button class="activity-button active" type="button" data-view="explorer" title="Explorador (Ctrl+Shift+E)" aria-label="Explorador">▤</button>
+      <button class="activity-button" type="button" data-view="source-control" title="Control de código fuente (Ctrl+Shift+G)" aria-label="Control de código fuente">⑂</button>
+      <button class="activity-button" type="button" data-view="agents" title="Agentes de código" aria-label="Agentes de código">✳</button>
+      <div class="activity-spacer"></div>
+      <button class="activity-button" type="button" data-view="about" title="Acerca de Memingo IDE" aria-label="Acerca de Memingo IDE">?</button>
+    </aside>
     <section class="editor-area">
       <div class="tabbar"><div class="tabs" id="tabs"></div><div class="path-label" id="pathLabel">Sin proyecto abierto</div></div>
       <div class="editor-wrap">
@@ -40,8 +51,12 @@
       <footer class="status"><span>● Memingo IDE</span><span id="statusText">Listo</span><span>UTF-8</span><span>LF</span><select id="languageSelect" aria-label="Seleccionar lenguaje" title="Seleccionar lenguaje"></select></footer>
     </section>
     <aside class="side-panel">
-      <div class="panel-heading">EXPLORADOR</div>
+      <div class="panel-heading" id="sidebarTitle">EXPLORADOR</div>
+      <section class="sidebar-view active" data-sidebar-view="explorer">
       <div class="explorer-root" id="explorerRoot"><div class="empty-explorer"><div class="folder-icon">▰</div><strong>Tu espacio de trabajo</strong><p>Abre una carpeta de proyecto para explorar sus archivos Memingo.</p><button id="sideProject" class="outline">Abrir proyecto</button><button id="sideOpen" class="outline">Abrir archivo suelto</button></div></div>
+      <div class="help-card"><span class="help-dot"></span><strong>Memingo Runtime</strong><p>Para ejecutar código necesitas tener Memingo instalado y disponible en PATH.</p><a href="https://github.com/Reaccionador2Jeje/Memingo">Ver runtime ↗</a></div>
+      </section>
+      <section class="sidebar-view" data-sidebar-view="source-control">
       <section class="git-panel">
         <div class="git-panel-title">CONTROL DE VERSIONES</div>
         <div class="git-repo" id="gitRepoLabel">Abre un proyecto para empezar</div>
@@ -75,6 +90,8 @@
         <div id="gitConflicts" class="git-conflicts"><div class="git-empty">No hay conflictos cargados.</div></div>
         <div id="gitConflictEditor" class="git-conflict-editor" hidden><div id="gitConflictPath" class="git-conflict-path"></div><textarea id="gitConflictContent" spellcheck="false" aria-label="Contenido para resolver conflicto"></textarea><div class="git-conflict-actions"><button id="saveGitConflict" class="outline">Guardar resolución</button><button id="stageGitConflict" class="outline">Marcar resuelto</button></div></div>
       </section>
+      </section>
+      <section class="sidebar-view" data-sidebar-view="agents">
       <section class="agents-panel">
         <div class="agents-panel-head"><strong>AGENTES DE CÓDIGO OPEN SOURCE</strong><span class="agents-license">MIT · Apache-2.0</span></div>
         <p class="agents-intro">Describe tu idea en español. El agente te ayuda a planificar, construir o revisar el proyecto.</p>
@@ -93,7 +110,14 @@
         <div id="agentConversation" class="agent-conversation" aria-live="polite"><div class="agent-empty">Tu conversación con el agente aparecerá aquí.</div></div>
         <div class="agent-footnote">El Constructor puede modificar archivos. Revisa cada permiso: Goose se ejecuta con los permisos de tu usuario y ACP no es un sandbox. No apruebes acciones que no entiendas.</div>
       </section>
-      <div class="help-card"><span class="help-dot"></span><strong>Memingo Runtime</strong><p>Para ejecutar código necesitas tener Memingo instalado y disponible en PATH.</p><a href="https://github.com/Reaccionador2Jeje/Memingo">Ver runtime ↗</a></div>
+      </section>
+      <section class="sidebar-view about-view" data-sidebar-view="about">
+        <div class="about-mark">M</div>
+        <strong>Memingo IDE</strong>
+        <p>Un entorno de desarrollo abierto para Memingo y otros lenguajes.</p>
+        <p class="about-version">Versión 0.1.0</p>
+        <a href="https://github.com/Reaccionador2Jeje/Memingo-IDE">Código fuente ↗</a>
+      </section>
     </aside>
   </main>
   <section class="terminal">
