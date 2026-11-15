@@ -53,3 +53,278 @@ editor.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCa
 try{const saved=JSON.parse(localStorage.getItem(KEY)||"null");if(Array.isArray(saved)&&saved.length){files=saved.filter(f=>f&&typeof f.text==="string").map(f=>({...f,id:f.id||id(),name:cleanName(f.name),language:languages[f.language]?f.language:"memingo",dirty:false}));} }catch{}
 if(!files.length){const old=localStorage.getItem("memingo.mobile.draft.v1");try{const d=JSON.parse(old||"null");files=[{id:id(),name:cleanName(d?.name),text:String(d?.text||""),language:"memingo",dirty:false}]}catch{files=[{id:id(),name:"main.mgo",text:"",language:"memingo",dirty:false}]}}
 activeId=files[0].id;switchFile(activeId);
+
+
+// Inicio de sesión OIDC para la aplicación Android nativa.
+const ACCOUNT_ISSUER = "https://atdev-accounts.onrender.com";
+const ACCOUNT_CLIENT_ID = "memingo-ide-android";
+const ACCOUNT_REDIRECT_URI = "dev.atdev.memingoide://oauth/callback";
+let accountDiscovery = null;
+let pendingAccountLogin = null;
+let accountAccessToken = null;
+let accountProfile = null;
+
+function setAccountStatus(message) {
+  const element = $("accountStatus");
+  if (element) element.textContent = message;
+}
+
+function randomBase64Url(byteLength = 32) {
+  const bytes = crypto.getRandomValues(new Uint8Array(byteLength));
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+}
+
+function decodeBase64Url(value) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
+  const binary = atob(padded);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+function decodeJwtPart(value) {
+  return JSON.parse(new TextDecoder().decode(decodeBase64Url(value)));
+}
+
+async function getAccountDiscovery() {
+  if (!accountDiscovery) {
+    const response = await fetch(ACCOUNT_ISSUER + "/.well-known/openid-configuration", {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
+    if (!response.ok) throw new Error("No se pudo consultar la configuración de AtDev Accounts.");
+    const data = await response.json();
+    if (
+      data.issuer !== ACCOUNT_ISSUER ||
+      !data.authorization_endpoint ||
+      !data.token_endpoint ||
+      !data.jwks_uri ||
+      !data.userinfo_endpoint
+    ) {
+      throw new Error("La configuración OIDC del servidor no es válida.");
+    }
+    accountDiscovery = data;
+  }
+  return accountDiscovery;
+}
+
+async function verifyAccountIdToken(token, expectedNonce, discovery) {
+  const parts = String(token || "").split(".");
+  if (parts.length !== 3) throw new Error("El ID token recibido no tiene un formato válido.");
+
+  const header = decodeJwtPart(parts[0]);
+  const claims = decodeJwtPart(parts[1]);
+  if (header.alg !== "RS256" || !header.kid) {
+    throw new Error("El ID token usa una firma no admitida.");
+  }
+
+  const jwksResponse = await fetch(discovery.jwks_uri, {
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+  });
+  if (!jwksResponse.ok) throw new Error("No se pudieron obtener las claves de firma de AtDev Accounts.");
+  const jwks = await jwksResponse.json();
+  const jwk = Array.isArray(jwks.keys)
+    ? jwks.keys.find((key) => key.kid === header.kid && key.kty === "RSA" && (!key.use || key.use === "sig"))
+    : null;
+  if (!jwk) throw new Error("No se encontró la clave de firma del ID token.");
+
+  const publicKey = await crypto.subtle.importKey(
+    "jwk",
+    jwk,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["verify"],
+  );
+  const validSignature = await crypto.subtle.verify(
+    { name: "RSASSA-PKCS1-v1_5" },
+    publicKey,
+    decodeBase64Url(parts[2]),
+    new TextEncoder().encode(parts[0] + "." + parts[1]),
+  );
+  if (!validSignature) throw new Error("La firma del ID token no es válida.");
+
+  const now = Math.floor(Date.now() / 1000);
+  const audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
+  if (claims.iss !== ACCOUNT_ISSUER) throw new Error("El emisor del ID token no coincide.");
+  if (!audiences.includes(ACCOUNT_CLIENT_ID)) throw new Error("El ID token no fue emitido para Memingo IDE.");
+  if (claims.azp && claims.azp !== ACCOUNT_CLIENT_ID) throw new Error("El destinatario autorizado no coincide.");
+  if (!Number.isFinite(claims.exp) || claims.exp <= now) throw new Error("El ID token ha expirado.");
+  if (Number.isFinite(claims.iat) && claims.iat > now + 60) throw new Error("La fecha del ID token no es válida.");
+  if (claims.nonce !== expectedNonce) throw new Error("La comprobación de nonce falló.");
+  if (typeof claims.sub !== "string" || !claims.sub) throw new Error("El ID token no contiene un identificador de cuenta válido.");
+  return claims;
+}
+
+function renderAccountState() {
+  const signIn = $("accountSignIn");
+  const signOut = $("accountSignOut");
+  if (accountProfile) {
+    setAccountStatus("Conectado: " + (accountProfile.name || accountProfile.email || "Cuenta AtDev"));
+    signIn.hidden = true;
+    signOut.hidden = false;
+  } else {
+    signIn.hidden = false;
+    signOut.hidden = true;
+    setAccountStatus("No has iniciado sesión en AtDev Accounts.");
+  }
+}
+
+async function finishAccountCallback(rawUrl) {
+  const callback = new URL(rawUrl);
+  if (
+    callback.protocol !== "dev.atdev.memingoide:" ||
+    callback.hostname !== "oauth" ||
+    callback.pathname !== "/callback"
+  ) return;
+
+  const pending = pendingAccountLogin;
+  if (!pending) {
+    setAccountStatus("Se recibió una respuesta de inicio de sesión que ya no está pendiente.");
+    return;
+  }
+  if (callback.searchParams.get("state") !== pending.state) {
+    pendingAccountLogin = null;
+    throw new Error("La respuesta de AtDev Accounts no superó la validación de state.");
+  }
+
+  const oauthError = callback.searchParams.get("error");
+  if (oauthError) {
+    pendingAccountLogin = null;
+    const description = callback.searchParams.get("error_description");
+    throw new Error(description || "Inicio de sesión cancelado: " + oauthError);
+  }
+
+  const code = callback.searchParams.get("code");
+  if (!code) {
+    pendingAccountLogin = null;
+    throw new Error("AtDev Accounts no devolvió un código de autorización.");
+  }
+
+  pendingAccountLogin = null;
+  await window.MemingoNativeAuth.close().catch(() => {});
+  setAccountStatus("Verificando la cuenta…");
+
+  const discovery = await getAccountDiscovery();
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    client_id: ACCOUNT_CLIENT_ID,
+    code,
+    redirect_uri: ACCOUNT_REDIRECT_URI,
+    code_verifier: pending.verifier,
+  });
+  const tokenResponse = await fetch(discovery.token_endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+    body,
+    cache: "no-store",
+  });
+  const tokens = await tokenResponse.json().catch(() => ({}));
+  if (!tokenResponse.ok) {
+    throw new Error(tokens.error_description || tokens.error || "No se pudieron intercambiar las credenciales.");
+  }
+  if (!tokens.access_token || !tokens.id_token || tokens.token_type?.toLowerCase() !== "bearer") {
+    throw new Error("AtDev Accounts devolvió una respuesta de tokens incompleta.");
+  }
+
+  const claims = await verifyAccountIdToken(tokens.id_token, pending.nonce, discovery);
+  const profileResponse = await fetch(discovery.userinfo_endpoint, {
+    headers: { Authorization: "Bearer " + tokens.access_token, Accept: "application/json" },
+    cache: "no-store",
+  });
+  const profile = await profileResponse.json().catch(() => ({}));
+  if (!profileResponse.ok || profile.sub !== claims.sub) {
+    throw new Error("No se pudo verificar el perfil de la cuenta.");
+  }
+
+  // Los tokens se mantienen solo en memoria. No se escriben en localStorage.
+  accountAccessToken = tokens.access_token;
+  accountProfile = {
+    sub: claims.sub,
+    name: profile.name || claims.name || "",
+    email: profile.email || claims.email || "",
+    email_verified: Boolean(profile.email_verified ?? claims.email_verified),
+  };
+  renderAccountState();
+  setAccountStatus("Sesión iniciada: " + (accountProfile.name || accountProfile.email || "Cuenta AtDev"));
+}
+
+async function beginAccountLogin() {
+  if (!window.MemingoNativeAuth?.isNative?.()) {
+    setAccountStatus("El inicio de sesión AtDev está disponible en la aplicación Android.");
+    return;
+  }
+  const button = $("accountSignIn");
+  button.disabled = true;
+  setAccountStatus("Conectando con AtDev Accounts…");
+  try {
+    const discovery = await getAccountDiscovery();
+    const verifier = randomBase64Url(32);
+    const challengeBytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+    const challenge = btoa(String.fromCharCode(...new Uint8Array(challengeBytes)))
+      .replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+    const state = randomBase64Url(32);
+    const nonce = randomBase64Url(32);
+    pendingAccountLogin = { verifier, state, nonce };
+
+    const authorization = new URL(discovery.authorization_endpoint);
+    authorization.search = new URLSearchParams({
+      response_type: "code",
+      client_id: ACCOUNT_CLIENT_ID,
+      redirect_uri: ACCOUNT_REDIRECT_URI,
+      scope: "openid profile email",
+      state,
+      nonce,
+      code_challenge: challenge,
+      code_challenge_method: "S256",
+    }).toString();
+    await window.MemingoNativeAuth.open(authorization.toString());
+    setAccountStatus("Completa el inicio de sesión en el navegador.");
+  } catch (error) {
+    pendingAccountLogin = null;
+    setAccountStatus("Error de inicio de sesión: " + (error?.message || "Error desconocido"));
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function signOutAccountLocally() {
+  accountAccessToken = null;
+  accountProfile = null;
+  pendingAccountLogin = null;
+  renderAccountState();
+  setAccountStatus("Sesión cerrada en Memingo. La sesión del navegador AtDev puede seguir activa.");
+}
+
+async function initializeAccountLogin() {
+  const bridge = window.MemingoNativeAuth;
+  if (!bridge?.isNative?.()) {
+    $("accountSignIn").hidden = true;
+    $("accountSignOut").hidden = true;
+    setAccountStatus("Inicio de sesión AtDev disponible en Android.");
+    return;
+  }
+
+  $("accountSignIn").addEventListener("click", beginAccountLogin);
+  $("accountSignOut").addEventListener("click", signOutAccountLocally);
+  try {
+    await bridge.addListener("appUrlOpen", ({ url }) => {
+      finishAccountCallback(url).catch((error) => {
+        setAccountStatus("Error de inicio de sesión: " + (error?.message || "Error desconocido"));
+        renderAccountState();
+      });
+    });
+    const launch = await bridge.getLaunchUrl();
+    if (launch?.url) {
+      finishAccountCallback(launch.url).catch((error) => {
+        setAccountStatus("Error de inicio de sesión: " + (error?.message || "Error desconocido"));
+      });
+    }
+  } catch (error) {
+    setAccountStatus("No se pudo preparar el inicio de sesión Android: " + (error?.message || "Error"));
+  }
+  renderAccountState();
+}
+
+initializeAccountLogin();
