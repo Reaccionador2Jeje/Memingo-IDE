@@ -14,7 +14,7 @@ function addFile(name="main.mgo",text="",language="memingo"){sync();const f={id:
 function closeFile(fileId){const f=files.find(x=>x.id===fileId);if(!f)return;if(f.dirty&&!confirm("Este archivo tiene cambios. ¿Cerrar igualmente?"))return;files=files.filter(x=>x.id!==fileId);if(!files.length)files.push({id:id(),name:"main.mgo",text:"",language:"memingo",dirty:false});activeId=files[0].id;switchFile(activeId);persist()}
 function updateGutter(){const lines=editor.value.split("\n").length;$("gutter").textContent=Array.from({length:lines},(_,i)=>i+1).join("\n");$("gutter").scrollTop=editor.scrollTop}
 function updateCursor(){const before=editor.value.slice(0,editor.selectionStart),line=before.split("\n").length,col=before.length-(before.lastIndexOf("\n")+1)+1;$("cursorStatus").textContent="Línea "+line+" · Columna "+col}
-function openSearch(replace=false){$("searchPanel").hidden=false;$("replaceInput").hidden=!replace;$("replaceOne").hidden=!replace;$("replaceAll").hidden=!replace;$("searchInput").focus()}
+function openSearch(replace=false){setMobileView("tools");$("searchPanel").hidden=false;$("replaceInput").hidden=!replace;$("replaceOne").hidden=!replace;$("replaceAll").hidden=!replace;$("searchInput").focus()}
 function findNext(){const q=$("searchInput").value;if(!q)return;const start=editor.selectionEnd;let at=editor.value.indexOf(q,start);if(at<0)at=editor.value.indexOf(q,0);if(at>=0){editor.focus();editor.setSelectionRange(at,at+q.length);searchIndex=at}else state.textContent="No se encontró el texto"}
 function replaceOne(){const q=$("searchInput").value;if(!q)return;if(editor.value.slice(editor.selectionStart,editor.selectionEnd)===q){editor.setRangeText($("replaceInput").value,editor.selectionStart,editor.selectionEnd,"end")}else findNext();changed()}
 function replaceAll(){const q=$("searchInput").value;if(!q)return;const before=editor.value,parts=before.split(q);editor.value=parts.join($("replaceInput").value);state.textContent="Reemplazos: "+(parts.length-1);changed()}
@@ -29,7 +29,7 @@ function showSuggestions(){
  list.replaceChildren();
  if(!results.length){const p=document.createElement("p");p.textContent="No hay sugerencias para este texto.";list.append(p)}
  for(const item of results){const button=document.createElement("button");button.type="button";button.textContent=item.label+" — "+item.detail;button.addEventListener("click",()=>{const start=cursor-(match?match[0].length:0);editor.focus();editor.setRangeText(item.label,start,cursor,"end");changed();panel.hidden=true;});list.append(button)}
- panel.hidden=false;
+ panel.hidden=false;setMobileView("tools");
 }
 function showHover(){
  const before=editor.value.slice(0,editor.selectionStart),after=editor.value.slice(editor.selectionStart);
@@ -42,7 +42,7 @@ function checkCode(){
  list.replaceChildren();
  for(const item of diagnostics){const li=document.createElement("li"),button=document.createElement("button");button.type="button";button.textContent="Línea "+(item.line+1)+": "+item.message;button.addEventListener("click",()=>{const lines=editor.value.split("\n");let offset=0;for(let i=0;i<item.line;i++)offset+=(lines[i]||"").length+1;offset+=item.column||0;editor.focus();editor.setSelectionRange(offset,Math.min(editor.value.length,offset+1));updateCursor()});li.append(button);list.append(li)}
  if(!diagnostics.length){const li=document.createElement("li");li.textContent="No se detectaron errores de delimitadores o cadenas.";list.append(li)}
- $("diagnostics").hidden=false;$("diagnosticStatus").textContent=diagnostics.length?diagnostics.length+" problema(s)":"Sin problemas básicos";
+ $("diagnostics").hidden=false;setMobileView("tools");$("diagnosticStatus").textContent=diagnostics.length?diagnostics.length+" problema(s)":"Sin problemas básicos";
 }
 $("newFile").onclick=()=>addFile();$("saveFile").onclick=()=>{persist();const f=active();if(f)f.dirty=false;renderTabs();state.textContent="Guardado en este dispositivo"};
 $("openFile").onclick=()=>picker.click();picker.onchange=async()=>{const file=picker.files?.[0];if(!file)return;if(file.size>2*1024*1024){alert("El archivo supera 2 MB.");picker.value="";return}const ext=file.name.split(".").pop().toLowerCase(),lang=({js:"javascript",ts:"typescript",py:"python",html:"html",css:"css",json:"json",mgo:"memingo",mgoa:"memingo"})[ext]||"text";addFile(file.name,await file.text(),lang);picker.value=""};
@@ -336,5 +336,28 @@ async function initializeAccountLogin() {
   }
   renderAccountState();
 }
+
+
+
+// Navegación inferior optimizada para pantallas táctiles.
+function setMobileView(viewName){
+ const allowed=["editor","tools","account"];
+ const view=allowed.includes(viewName)?viewName:"editor";
+ document.querySelectorAll("[data-mobile-view]").forEach(section=>{
+  const active=section.dataset.mobileView===view;
+  section.classList.toggle("active",active);
+  section.hidden=!active;
+ });
+ document.querySelectorAll("[data-mobile-tab]").forEach(button=>{
+  const active=button.dataset.mobileTab===view;
+  button.classList.toggle("active",active);
+  if(active)button.setAttribute("aria-current","page");
+  else button.removeAttribute("aria-current");
+ });
+ if(view==="editor")editor.focus({preventScroll:true});
+}
+document.querySelectorAll("[data-mobile-tab]").forEach(button=>{
+ button.addEventListener("click",()=>setMobileView(button.dataset.mobileTab));
+});
 
 initializeAccountLogin();
