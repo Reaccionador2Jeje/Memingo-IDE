@@ -95,13 +95,21 @@ async function getAccountDiscovery() {
     });
     if (!response.ok) throw new Error("No se pudo consultar la configuración de AtDev Accounts.");
     const data = await response.json();
-    if (
-      data.issuer !== ACCOUNT_ISSUER ||
-      !data.authorization_endpoint ||
-      !data.token_endpoint ||
-      !data.jwks_uri ||
-      !data.userinfo_endpoint
-    ) {
+    const endpointNames = [
+      "authorization_endpoint",
+      "token_endpoint",
+      "jwks_uri",
+      "userinfo_endpoint",
+    ];
+    if (data.issuer !== ACCOUNT_ISSUER || endpointNames.some((name) => {
+      if (typeof data[name] !== "string") return true;
+      try {
+        const endpoint = new URL(data[name]);
+        return endpoint.protocol !== "https:" || endpoint.origin !== ACCOUNT_ISSUER;
+      } catch {
+        return true;
+      }
+    })) {
       throw new Error("La configuración OIDC del servidor no es válida.");
     }
     accountDiscovery = data;
@@ -150,8 +158,10 @@ async function verifyAccountIdToken(token, expectedNonce, discovery) {
   if (claims.iss !== ACCOUNT_ISSUER) throw new Error("El emisor del ID token no coincide.");
   if (!audiences.includes(ACCOUNT_CLIENT_ID)) throw new Error("El ID token no fue emitido para Memingo IDE.");
   if (claims.azp && claims.azp !== ACCOUNT_CLIENT_ID) throw new Error("El destinatario autorizado no coincide.");
+  if (audiences.length > 1 && claims.azp !== ACCOUNT_CLIENT_ID) throw new Error("Falta el destinatario autorizado del ID token.");
   if (!Number.isFinite(claims.exp) || claims.exp <= now) throw new Error("El ID token ha expirado.");
-  if (Number.isFinite(claims.iat) && claims.iat > now + 60) throw new Error("La fecha del ID token no es válida.");
+  if (!Number.isFinite(claims.iat) || claims.iat > now + 60) throw new Error("La fecha del ID token no es válida.");
+  if (Number.isFinite(claims.nbf) && claims.nbf > now + 60) throw new Error("El ID token todavía no es válido.");
   if (claims.nonce !== expectedNonce) throw new Error("La comprobación de nonce falló.");
   if (typeof claims.sub !== "string" || !claims.sub) throw new Error("El ID token no contiene un identificador de cuenta válido.");
   return claims;
