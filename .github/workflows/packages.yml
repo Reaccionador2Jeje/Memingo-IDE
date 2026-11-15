@@ -88,7 +88,15 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Build desktop packages
-        run: ${{ matrix.command }}
+        shell: bash
+        run: |
+          if [ -z "$CSC_LINK" ]; then
+            unset CSC_LINK CSC_KEY_PASSWORD
+            if [ "${{ matrix.platform }}" = "macOS" ]; then
+              export CSC_IDENTITY_AUTO_DISCOVERY=false
+            fi
+          fi
+          ${{ matrix.command }}
 
       - name: Remove builder metadata
         shell: bash
