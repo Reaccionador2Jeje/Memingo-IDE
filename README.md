@@ -301,3 +301,9 @@ Esta primera edición Android es una aplicación móvil independiente y reducida
 ## ZIP multiplataforma y releases
 
 El flujo **Memingo IDE packages** compila Windows, Linux, macOS y Android, descarga los cuatro artefactos y los reúne en `Memingo-IDE-release.zip`. En ejecuciones manuales, el ZIP aparece como artefacto `memingo-ide-all-platforms`. Al publicar un tag `v*`, el flujo adjunta al GitHub Release los paquetes individuales, el ZIP combinado y `SHA256SUMS.txt`. Los artefactos temporales se conservan 14 días y el ZIP combinado 30 días.
+
+## Walletie compatibility
+
+The IDE remains fully usable without Walletie. Optional profile cosmetics or community rewards may use the shared Walletie API after identity compatibility is implemented.
+
+Walletie V1 currently accepts AtDev Cloud HS256 tokens only; other identity systems need the documented SSO bridge first. See the [Walletie integration matrix](https://github.com/Reaccionador2Jeje/Walletie/blob/main/docs/INTEGRATION_MATRIX.md).
