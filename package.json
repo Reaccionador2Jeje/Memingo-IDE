@@ -20,7 +20,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "check": "node --check scripts/web-server.mjs && node --check tests/web-server.test.js && node --check mobile/mobile.js && node --check mobile/memingo-lsp.js && node --check src/main.js && node --check src/preload.js && node --check src/renderer.js && node --check src/languages/registry.js && node --check src/languages/lsp-client.js && node --check tests/language-registry.test.js && node --check tests/lsp-client.test.js && node --check src/agents/registry.js && node --check src/agents/adapter-contract.js && node --check tests/agents-registry.test.js && node --check tests/agent-adapters.test.js && node --check tests/android-build-scripts.test.js && node --check scripts/build-android.mjs && node --check scripts/set-android-version.mjs && node --check scripts/configure-android-signing.mjs",
+    "check": "node --check scripts/web-server.mjs && node --check scripts/build-native-auth.mjs && node --check scripts/configure-android-oauth.mjs && node --check mobile/native-auth-entry.js && node --check tests/web-server.test.js && node --check mobile/mobile.js && node --check mobile/memingo-lsp.js && node --check src/main.js && node --check src/preload.js && node --check src/renderer.js && node --check src/languages/registry.js && node --check src/languages/lsp-client.js && node --check tests/language-registry.test.js && node --check tests/lsp-client.test.js && node --check src/agents/registry.js && node --check src/agents/adapter-contract.js && node --check tests/agents-registry.test.js && node --check tests/agent-adapters.test.js && node --check tests/android-build-scripts.test.js && node --check scripts/build-android.mjs && node --check scripts/set-android-version.mjs && node --check scripts/configure-android-signing.mjs",
     "test": "node --test",
     "cap:sync": "npx cap sync",
     "android:debug": "node scripts/build-android.mjs",
@@ -30,14 +30,18 @@
     "dist:linux": "electron-builder --linux --publish never",
     "dist:mac": "electron-builder --mac --universal --publish never",
     "dist:all": "electron-builder --win --linux --publish never",
-    "web": "node bin/memingo-ide-web.mjs"
+    "web": "node bin/memingo-ide-web.mjs",
+    "build:native-auth": "node scripts/build-native-auth.mjs"
   },
   "devDependencies": {
     "electron": "^37.2.6",
     "electron-builder": "^26.0.12",
     "@capacitor/android": "^7.4.3",
     "@capacitor/cli": "^7.4.3",
-    "@capacitor/core": "^7.4.3"
+    "@capacitor/core": "^7.4.3",
+    "@capacitor/app": "^7.0.1",
+    "@capacitor/browser": "^7.0.1",
+    "esbuild": "^0.25.0"
   },
   "build": {
     "appId": "dev.atdev.memingoide",
