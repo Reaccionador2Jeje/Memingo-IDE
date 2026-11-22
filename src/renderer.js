@@ -403,6 +403,20 @@ function renderAndroidCard(manifest) {
 
 async function refreshAndroidProjectView() {
   const project = await window.memingoIDE.refreshProject();
+  const summaryCard = [...explorerRoot.querySelectorAll(".manifest-card")]
+    .find(card => card.id !== "androidProjectCard");
+  if (summaryCard && project.manifest?.valid) {
+    const heading = summaryCard.querySelector("strong");
+    if (heading) heading.textContent = "Proyecto Memingo";
+    const details = summaryCard.querySelector("p");
+    const summary = project.manifest.name + " · v" + project.manifest.version;
+    if (details) details.textContent = summary;
+    else {
+      const paragraph = document.createElement("p");
+      paragraph.textContent = summary;
+      summaryCard.appendChild(paragraph);
+    }
+  }
   renderAndroidCard(project.manifest);
   const tree = explorerRoot.querySelector(".file-tree");
   if (tree) {
