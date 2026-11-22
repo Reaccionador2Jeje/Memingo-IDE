@@ -358,6 +358,94 @@ function renderTree(items, container, depth = 0) {
     } else row.addEventListener("click",() => openProjectFile(item.path));
   }
 }
+
+function renderAndroidCard(manifest) {
+  document.getElementById("androidProjectCard")?.remove();
+  const card = document.createElement("section");
+  card.id = "androidProjectCard";
+  card.className = "manifest-card android-project-card";
+  const title = document.createElement("strong");
+  title.textContent = "ANDROID NATIVO";
+  card.appendChild(title);
+
+  const config = manifest?.android;
+  const details = document.createElement("p");
+  if (config?.applicationId) {
+    details.textContent = config.applicationId + " · SDK " + config.minSdk + "–" + config.targetSdk + " · Compose";
+  } else {
+    details.textContent = "Este proyecto todavía no tiene configuración Android.";
+  }
+  card.appendChild(details);
+
+  const actions = document.createElement("div");
+  actions.className = "android-project-actions";
+  const addAction = (action, label, primary = false) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = primary ? "manifest-entry android-primary" : "manifest-entry";
+    button.textContent = label;
+    button.addEventListener("click", () => runAndroidStudioAction(action));
+    actions.appendChild(button);
+  };
+
+  if (!config?.applicationId) {
+    addAction("init", "Configurar Android", true);
+  } else {
+    addAction("check", "Comprobar");
+    addAction("generate", "Generar código");
+    addAction("build", "Compilar APK", true);
+    addAction("run", "Instalar y ejecutar");
+  }
+  card.appendChild(actions);
+  const tree = explorerRoot.querySelector(".file-tree");
+  explorerRoot.insertBefore(card, tree || null);
+}
+
+async function refreshAndroidProjectView() {
+  const project = await window.memingoIDE.refreshProject();
+  renderAndroidCard(project.manifest);
+  const tree = explorerRoot.querySelector(".file-tree");
+  if (tree) {
+    tree.replaceChildren();
+    renderTree(project.tree || [], tree);
+  }
+  return project;
+}
+
+async function runAndroidStudioAction(action) {
+  const labels = {
+    init: "Configurar proyecto Android",
+    check: "Comprobar proyecto Android",
+    generate: "Generar proyecto nativo",
+    build: "Compilar APK de depuración",
+    run: "Instalar y ejecutar aplicación"
+  };
+  outputMode = "console";
+  document.getElementById("consoleTab").classList.add("selected");
+  document.getElementById("problemsTab").classList.remove("selected");
+  renderOutput();
+  log("$ " + (labels[action] || "Android"), "hint-line");
+  runStatus.textContent = "● Android";
+  statusText.textContent = "Trabajando en Android…";
+  try {
+    const result = await window.memingoIDE.androidAction(action);
+    if (result.error) log(result.error, "stderr");
+    if (result.code === 0) {
+      log(action === "run" ? "Aplicación instalada e iniciada." : "Acción Android completada.", "hint-line");
+      if (result.artifactPath) log("APK generado: " + result.artifactPath, "hint-line");
+      if (result.device) log("Dispositivo: " + result.device, "hint-line");
+      await refreshAndroidProjectView();
+    } else {
+      log("La acción Android terminó con código " + result.code, "stderr");
+    }
+  } catch (error) {
+    log(error.message, "stderr");
+  } finally {
+    runStatus.textContent = "● Inactivo";
+    statusText.textContent = "Listo";
+  }
+}
+
 async function openProject() {
   try {
     const project = await window.memingoIDE.openProject();
@@ -401,6 +489,7 @@ async function openProject() {
       projectCard.appendChild(message);
     }
     explorerRoot.appendChild(projectCard);
+    renderAndroidCard(manifest);
     const tree = document.createElement("div");
     tree.className = "file-tree";
     explorerRoot.appendChild(tree);
@@ -801,6 +890,7 @@ document.getElementById("lspReferences").addEventListener("click", lspReferences
 document.getElementById("lspRename").addEventListener("click", lspRename);
 document.getElementById("lspActions").addEventListener("click", lspCodeActions);
 window.memingoIDE.onOutput(data=>log(data.text,data.type));
+window.memingoIDE.onAndroidOutput(data => log(data.text, data.type === "stderr" ? "stderr" : "hint-line"));
 tabs.push({id:makeId(),path:null,name:"Sin título.mgo",content:editor.value,savedContent:editor.value,dirty:false});
 activeTabId=tabs[0].id;
 renderTabs();updateLines();updateSyntax();
