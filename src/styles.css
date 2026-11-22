@@ -337,3 +337,11 @@ body.sidebar-hidden.panel-hidden .terminal { margin-left:0; }
   .terminal { margin-left:268px; }
   body.sidebar-hidden .terminal { margin-left:48px; }
 }
+
+
+.android-project-card{border-color:#3b4934;background:#1b211b}
+.android-project-card strong{color:#a6e36b;letter-spacing:.7px}
+.android-project-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.android-project-actions .manifest-entry{margin:0;cursor:pointer}
+.android-project-actions .android-primary{border-color:#789b5b;background:#293b25;color:#dff4d2}
+.android-project-actions .manifest-entry:disabled{opacity:.5;cursor:not-allowed}
