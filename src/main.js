@@ -771,7 +771,7 @@ ipcMain.handle("project:open", async () => {
 
 ipcMain.handle("project:refresh", async () => {
   if (!projectRoot) throw new Error("No hay un proyecto abierto.");
-  return { path: projectRoot, name: path.basename(projectRoot), tree: await scanProjectTree(projectRoot) };
+  return { path: projectRoot, name: path.basename(projectRoot), manifest: await readProjectManifest(projectRoot), tree: await scanProjectTree(projectRoot) };
 });
 
 ipcMain.handle("project:open-file", async (_event, filePath) => {
