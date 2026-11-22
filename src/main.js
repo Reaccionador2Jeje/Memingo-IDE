@@ -618,10 +618,122 @@ async function readProjectManifest(root) {
     name: String(packageInfo.name || path.basename(root)),
     version: String(packageInfo.version || "0.0.0"),
     entry, entryPath, entryExists: Boolean(entryStat && entryStat.isFile()),
-    dependencyCount: Object.keys(sections.dependencies || {}).length
+    dependencyCount: Object.keys(sections.dependencies || {}).length,
+    android: sections.android ? {
+      schemaVersion: sections.android.schema_version || "1",
+      applicationId: String(sections.android.application_id || ""),
+      minSdk: String(sections.android.min_sdk || "23"),
+      targetSdk: String(sections.android.target_sdk || "35"),
+      versionName: String(sections.android.version_name || packageInfo.version || "0.1.0"),
+      ui: String(sections.android.ui || "compose")
+    } : null
   };
 }
 
+
+
+const ANDROID_ACTIONS = new Set(["init", "check", "generate", "build"]);
+
+function sendAndroidOutput(event, type, text) {
+  if (event?.sender && !event.sender.isDestroyed()) {
+    event.sender.send("android:output", { type, text: String(text) });
+  }
+}
+
+function runAndroidProcess(event, executable, args, cwd) {
+  if (activeProcess) throw new Error("Ya hay un proceso en ejecución.");
+  return new Promise(resolve => {
+    const child = spawn(executable, args, {
+      cwd, windowsHide: true, shell: false, env: process.env
+    });
+    activeProcess = child;
+    let stdout = "", stderr = "", settled = false;
+    const finish = result => {
+      if (settled) return;
+      settled = true;
+      if (activeProcess === child) activeProcess = null;
+      resolve(result);
+    };
+    child.stdout.on("data", chunk => {
+      const value = chunk.toString();
+      stdout += value;
+      sendAndroidOutput(event, "stdout", value);
+    });
+    child.stderr.on("data", chunk => {
+      const value = chunk.toString();
+      stderr += value;
+      sendAndroidOutput(event, "stderr", value);
+    });
+    child.on("error", error => finish({
+      code: -1,
+      error: error.code === "ENOENT"
+        ? (executable === "adb" ? "No se encontró ADB. Instala Android Platform Tools y agrega adb a PATH." : "No se encontró Memingo. Comprueba que el runtime esté instalado y disponible en PATH.")
+        : error.message,
+      stdout, stderr
+    }));
+    child.on("close", code => finish({ code: code ?? -1, stdout, stderr }));
+  });
+}
+
+async function runAndroidCli(event, action) {
+  if (!ANDROID_ACTIONS.has(action)) throw new Error("Acción Android no permitida.");
+  if (!projectRoot) throw new Error("Abre una carpeta de proyecto primero.");
+  const root = path.resolve(projectRoot);
+  const stat = await fs.stat(root).catch(() => null);
+  if (!stat || !stat.isDirectory()) throw new Error("La carpeta del proyecto ya no está disponible.");
+  const result = await runAndroidProcess(
+    event,
+    process.platform === "win32" ? "memingo.exe" : "memingo",
+    ["android", action, root],
+    root
+  );
+  const apk = path.join(root, "android", "app", "build", "outputs", "apk", "debug", "app-debug.apk");
+  const artifactPath = action === "build" && result.code === 0 && await fs.stat(apk).then(item => item.isFile()).catch(() => false)
+    ? apk : null;
+  return { ...result, action, artifactPath };
+}
+
+async function runAndroidApp(event) {
+  if (!projectRoot) throw new Error("Abre una carpeta de proyecto primero.");
+  const manifest = await readProjectManifest(projectRoot);
+  if (!manifest.valid || !manifest.android?.applicationId) {
+    throw new Error("Este proyecto no tiene una configuración Android válida. Usa «Configurar Android» primero.");
+  }
+  const applicationId = manifest.android.applicationId;
+  if (!/^[a-z][A-Za-z0-9_]*(?:\\.[a-z][A-Za-z0-9_]*)+$/.test(applicationId)) {
+    throw new Error("El application ID de Android no es válido.");
+  }
+  const root = path.resolve(projectRoot);
+  const apk = path.join(root, "android", "app", "build", "outputs", "apk", "debug", "app-debug.apk");
+  let apkExists = await fs.stat(apk).then(item => item.isFile()).catch(() => false);
+  if (!apkExists) {
+    sendAndroidOutput(event, "hint-line", "No hay un APK reciente. Compilando antes de instalar…\\n");
+    const built = await runAndroidCli(event, "build");
+    if (built.code !== 0) return { ...built, action: "run" };
+    apkExists = await fs.stat(apk).then(item => item.isFile()).catch(() => false);
+  }
+  if (!apkExists) throw new Error("No se encontró el APK de depuración después de compilar.");
+  const devices = await runAndroidProcess(event, "adb", ["devices"], root);
+  if (devices.code !== 0) throw new Error(devices.error || devices.stderr || "No se pudieron consultar los dispositivos ADB.");
+  const connected = devices.stdout.split(/\\r?\\n/).slice(1)
+    .map(line => line.trim().split(/\\s+/))
+    .filter(parts => parts.length >= 2 && parts[1] === "device")
+    .map(parts => parts[0]);
+  if (!connected.length) throw new Error("No hay ningún dispositivo o emulador Android conectado y autorizado por ADB.");
+  const serial = connected[0];
+  sendAndroidOutput(event, "hint-line", "Instalando en " + serial + "…\\n");
+  const installed = await runAndroidProcess(event, "adb", ["-s", serial, "install", "-r", apk], root);
+  if (installed.code !== 0) throw new Error(installed.error || installed.stderr || "ADB no pudo instalar el APK.");
+  const launched = await runAndroidProcess(event, "adb", ["-s", serial, "shell", "am", "start", "-n", applicationId + "/.MainActivity"], root);
+  if (launched.code !== 0) throw new Error(launched.error || launched.stderr || "ADB no pudo iniciar la aplicación.");
+  return { code: 0, action: "run", stdout: devices.stdout + installed.stdout + launched.stdout, stderr: installed.stderr + launched.stderr, artifactPath: apk, device: serial };
+}
+
+ipcMain.handle("android:action", async (event, payload = {}) => {
+  const action = typeof payload.action === "string" ? payload.action : "";
+  if (action === "run") return runAndroidApp(event);
+  return runAndroidCli(event, action);
+});
 
 const SUPPORTED_EXTENSION_PATTERN = new RegExp("\\.(" + getSupportedExtensions().map(extension => extension.replace(/[^a-z0-9_-]/gi, "")).join("|") + ")$", "i");
 const SPECIAL_TEXT_FILENAMES = new Set(["dockerfile", "makefile", "gnumakefile", "license", "readme", ".gitignore", ".gitattributes"]);
@@ -659,7 +771,7 @@ ipcMain.handle("project:open", async () => {
 
 ipcMain.handle("project:refresh", async () => {
   if (!projectRoot) throw new Error("No hay un proyecto abierto.");
-  return { path: projectRoot, name: path.basename(projectRoot), tree: await scanProjectTree(projectRoot) };
+  return { path: projectRoot, name: path.basename(projectRoot), manifest: await readProjectManifest(projectRoot), tree: await scanProjectTree(projectRoot) };
 });
 
 ipcMain.handle("project:open-file", async (_event, filePath) => {

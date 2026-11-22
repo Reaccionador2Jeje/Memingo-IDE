@@ -113,6 +113,22 @@ Sin esos secretos, Windows y macOS generan builds sin firmar y Android genera un
 
 **Android:** Memingo IDE includes a touch-first mobile workbench in `mobile/`, packaged with Capacitor. It now has a compact title bar, file tabs, editor workspace, status bar and bottom navigation for Editor, Tools and Account. The mobile workspace supports multiple file tabs, per-file local drafts, import/export, language selection, search, replace, basic delimiter diagnostics, automatic indentation and keyboard shortcuts. It remains a lightweight mobile edition: it does not yet include the desktop runtime process, full project explorer, Git/GitHub, agents, terminal or desktop LSP integrations.
 
+### Memingo Android Native workflow (A3)
+
+When you open a Memingo project, the desktop workbench detects its `[android]` manifest section and displays an **ANDROID NATIVO** card in the Explorer. From there you can:
+
+- Configure Android for the currently opened Memingo project.
+- Run the runtime's Android project diagnostics.
+- Generate or refresh the native Kotlin/Jetpack Compose project.
+- Build a debug APK and see its exact artifact path.
+- Install and launch the generated APK on the first connected, authorized ADB device or emulator.
+
+The workflow delegates project validation, generation and compilation to the installed `memingo android` CLI. The IDE does not implement a second Android generator. The **Instalar y ejecutar** action uses Android Platform Tools (`adb`) and automatically builds the debug APK when it is missing. Install/run requires an Android device or emulator with USB debugging enabled and authorized.
+
+Build output and errors are streamed to the integrated Console. The Android actions use a fixed allowlist and argument arrays; arbitrary shell commands are not accepted. The browser/mobile editor does not yet provide this native Android toolchain integration.
+
+See [Android Studio workflow](docs/ANDROID_STUDIO.md) for details.
+
 ### AtDev Accounts integration
 
 The Android editor now supports sign-in with **AtDev Accounts** using the registered public OIDC client `memingo-ide-android`. It uses the system browser, Authorization Code + PKCE (S256), validates the ID token signature and OIDC claims against the issuer's JWKS, and checks the returned `state` and `nonce`. The client secret is never embedded in the APK. The access token remains in memory only; the current mobile edition does not persist refresh tokens or promise a restored login after the app closes.
