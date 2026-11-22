@@ -10,6 +10,12 @@ contextBridge.exposeInMainWorld("memingoIDE", {
   run: filePath => ipcRenderer.invoke("memingo:run", filePath),
   check: filePath => ipcRenderer.invoke("memingo:check", filePath),
   format: filePath => ipcRenderer.invoke("memingo:format", filePath),
+  androidAction: action => ipcRenderer.invoke("android:action", { action }),
+  onAndroidOutput: callback => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on("android:output", listener);
+    return () => ipcRenderer.removeListener("android:output", listener);
+  },
   debug: payload => ipcRenderer.invoke("memingo:debug", payload),
   terminalExecute: payload => ipcRenderer.invoke("terminal:execute", payload),
   versionControl: payload => ipcRenderer.invoke("vcs:execute", payload),
